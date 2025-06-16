@@ -403,7 +403,7 @@ async def create_dice_room(request: Request, data: CreateRoomRequest) -> JSONRes
     reward = data.reward
     dice_rooms[new_room_id] = {
         "name": name,
-        "reward": int(reward),
+        "reward": reward,
         "going": False,
         "active_player": randint(0, 1),
         "players": [request.state.user_id],
@@ -555,7 +555,7 @@ async def create_blackjack_room(
     new_room_id = generate_room_id()
     blackjack_rooms[new_room_id] = {
         "name": name,
-        "reward": int(reward),
+        "reward": reward,
         "going": False,
         "active_player": randint(0, 1),
         "players": [request.state.user_id],
