@@ -1,0 +1,43 @@
+[project]
+name = "kickthedollwebbot"
+version = "1.0.0"
+description = "A hamster-combat-like webapp."
+authors = [
+    {name = "Velmer",email = "barkaloff.m@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "aiogram (>=3.20.0.post0,<4.0.0)",
+    "aiohttp (>=3.9.0, <3.12)",
+    "beautifulsoup4 (>=4.13.4,<5.0.0)",
+    "fastapi (>=0.115.12,<0.116.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "numpy (>=2.3.0,<3.0.0)",
+    ##"pydantic (>=2.11.7,<3.0.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "schedule (>=1.2.2,<2.0.0)",
+    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "tontools (==2.0.11)",
+    "uvicorn (>=0.34.3,<0.35.0)"
+]
+
+[tool.poetry]
+
+packages = [
+  { include = "app" },
+  { include = "backend" }
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.0"
+ruff = "^0.11.13"
+pyright = "^1.1.402"
+mypy = "^1.16.0"
+bandit = "^1.8.3"
+pre-commit = "^4.2.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
