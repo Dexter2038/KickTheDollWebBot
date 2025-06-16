@@ -27,7 +27,6 @@ dependencies = [
 
 packages = [
   { include = "app" },
-  { include = "backend" }
 ]
 
 [tool.poetry.group.dev.dependencies]

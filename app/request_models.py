@@ -1,77 +1,72 @@
 from pydantic import BaseModel
 
 
-class DefaultRequest(BaseModel):
-    initData: str
-
-
-class PlayerRequest(DefaultRequest):
-    player_id: int
-
-class MoneyRequest(PlayerRequest):
+class MoneyRequest(BaseModel):
     money: float | int
 
-class LotteryBetRequest(PlayerRequest):
+
+class LotteryBetRequest(BaseModel):
     reward: float | int
     bet: float | int
 
-class TransactionRequest(DefaultRequest):
+
+class TransactionRequest(BaseModel):
     amount: float
     transaction_type: int
 
-class CoinBetRequest(DefaultRequest):
+
+class CoinBetRequest(BaseModel):
     coin_name: str
-    player_id: int
     way: bool
     time: int
     bet: float
 
-class AmountRequest(PlayerRequest):
+
+class AmountRequest(BaseModel):
     bet: float
 
-class WalletAmountRequest(DefaultRequest):
+
+class WalletAmountRequest(BaseModel):
     amount: int | float
 
-class FinishedGameRequest(DefaultRequest):
+
+class FinishedGameRequest(BaseModel):
     game_type: int
     amount: float
     first_user_id: int
     second_user_id: int | None
 
 
-class LeaveRequest(DefaultRequest):
+class LeaveRequest(BaseModel):
     room_id: str
-    player_id: int
 
-class WalletRequest(PlayerRequest):
+
+class WalletRequest(BaseModel):
     wallet_address: str
 
-class RoomRequest(DefaultRequest):
+
+class RoomRequest(BaseModel):
     room_id: str
 
 
-class CreateUserRequest(DefaultRequest):
+class CreateUserRequest(BaseModel):
     username: str
     telegram_id: int
     wallet_address: str
 
 
-class CreateRoomRequest(DefaultRequest):
+class CreateRoomRequest(BaseModel):
     name: str
     reward: int
-    player_id: int
 
 
-class TurnRequest(DefaultRequest):
+class RoomRequest(BaseModel):
     room_id: str
-    player_id: int
 
 
-class GetUpdatesRequest(BaseModel):
+class RoomRequest(BaseModel):
     room_id: str
-    player_id: int
 
 
-class JoinRequest(DefaultRequest):
+class RoomRequest(BaseModel):
     room_id: str
-    player_id: int
