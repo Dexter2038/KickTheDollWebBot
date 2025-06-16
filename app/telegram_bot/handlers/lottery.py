@@ -1,23 +1,29 @@
-from datetime import datetime
-from aiogram import Router, F, Bot
-from aiogram.types import CallbackQuery, Message
+from datetime import UTC, datetime
+from typing import Annotated
+
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
-from app.database import db
-from app.telegram_bot.states import States
+from aiogram.types import CallbackQuery, Message
+from aiogram3_di import Depends
+
+from app.db.actions import Actions
+from app.db.session import AsyncSession, get_session
+from app.lottery import (
+    change_date_lottery,
+    close_lottery,
+    create_lottery,
+    is_current_lottery,
+)
 from app.telegram_bot.keyboards import (
-    get_nav_keyboard,
-    get_lottery_keyboard,
     get_create_lottery_keyboard,
-    get_manage_lottery_keyboard,
     get_home_keyboard,
+    get_lottery_keyboard,
+    get_manage_lottery_keyboard,
+    get_nav_keyboard,
     get_sure_close_keyboard,
 )
-from app.lottery import (
-    is_current_lottery,
-    create_lottery,
-    close_lottery,
-    change_date_lottery,
-)
+from app.telegram_bot.states import States
+
 from ..keyboards import (
     get_main_keyboard,
     get_sure_change_lottery_keyboard,
@@ -30,15 +36,20 @@ batch_size = 10
 
 
 @router.callback_query(F.data == "Lottery")
-async def history_main(callback: CallbackQuery):
+async def history_main(
+    callback: CallbackQuery,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     await callback.message.edit_text(
-        f"Всего внесено: {await db.get_sum_lottery_transactions()}$. Выберите действие:",
+        f"Всего внесено: {await Actions(session).get_sum_lottery_transactions()}$. Выберите действие:",
         reply_markup=get_lottery_keyboard(),
     )
 
 
 @router.callback_query(F.data == "ManageLottery")
 async def manage_lottery(callback: CallbackQuery):
+    assert callback.data and callback.message, "Пустое сообщение"
     if is_current_lottery():
         await callback.message.edit_text(
             "Управление розыгрышем", reply_markup=get_manage_lottery_keyboard()
@@ -51,6 +62,7 @@ async def manage_lottery(callback: CallbackQuery):
 
 @router.callback_query(F.data == "CreateLottery")
 async def create_lottery_suggest(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     await callback.message.edit_text(
         "Введите дату и время окончания розыгрыша в формате: {день:месяц:год.час:минута:секунда}. Пример: 30:09:2024.10:20:00",
         reply_markup=get_home_keyboard(),
@@ -60,6 +72,7 @@ async def create_lottery_suggest(callback: CallbackQuery, state: FSMContext):
 
 @router.message(States.CreateLottery)
 async def create_lottery_check(message: Message, state: FSMContext):
+    assert message.text, "Пустое сообщение"
     try:
         lottery_date = message.text.split(".")
         if len(lottery_date) != 2:
@@ -73,7 +86,7 @@ async def create_lottery_check(message: Message, state: FSMContext):
         day, month, year = map(int, date)
         hour, minute, second = map(int, time)
         date_time = datetime(year, month, day, hour, minute, second)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if date_time < now:
             await message.answer(
                 f"Дата не может быть раньше, чем сейчас. пример: 30:09:2024.10:20:00. Сейчас: {now.strftime('%d:%m:%Y.%H:%M:%S')}"
@@ -90,7 +103,8 @@ async def create_lottery_check(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("CreateLottery_"))
-async def move_lottery(callback: CallbackQuery, state: FSMContext):
+async def create_lottery_bot(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, date = callback.data.split("_")
     if create_lottery(date):
         await callback.message.edit_text(
@@ -104,6 +118,7 @@ async def move_lottery(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "ChangeLotteryDate")
 async def change_lottery_date_suggest(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     await callback.message.edit_text(
         "Введите дату и время окончания розыгрыша в формате: {день:месяц:год.час:минута:секунда}. Пример: 30:09:2024.10:20:00",
         reply_markup=get_home_keyboard(),
@@ -113,6 +128,7 @@ async def change_lottery_date_suggest(callback: CallbackQuery, state: FSMContext
 
 @router.message(States.ChangeLotteryDate)
 async def change_lottery_date_check(message: Message, state: FSMContext):
+    assert message.text, "Пустое сообщение"
     try:
         lottery_date = message.text.split(".")
         if len(lottery_date) != 2:
@@ -126,7 +142,7 @@ async def change_lottery_date_check(message: Message, state: FSMContext):
         day, month, year = map(int, date)
         hour, minute, second = map(int, time)
         date_time = datetime(year, month, day, hour, minute, second)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if date_time < now:
             await message.answer(
                 f"Дата не может быть раньше, чем сейчас. пример: 30:09:2024.10:20:00. Сейчас: {now.strftime('%d:%m:%Y.%H:%M:%S')}"
@@ -144,6 +160,7 @@ async def change_lottery_date_check(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("ChangeLotteryDate_"))
 async def move_lottery(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, date = callback.data.split("_")
     if change_date_lottery(date):
         await callback.message.edit_text(
@@ -157,6 +174,7 @@ async def move_lottery(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "CloseLottery")
 async def close_lottery_suggest(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     await callback.message.edit_text(
         text="Вы точно хотите закрыть розыгрыш прям сейчас?",
         reply_markup=get_sure_close_keyboard(),
@@ -164,7 +182,12 @@ async def close_lottery_suggest(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == "SureCloseLottery")
-async def sure_close_lottery(callback: CallbackQuery, state: FSMContext):
+async def sure_close_lottery(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     if close_lottery():
         await callback.message.edit_text(
             text="Вы успешно завершили розыгрыш. Награды начислены.",
@@ -177,17 +200,24 @@ async def sure_close_lottery(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("Lottery_"))
-async def history(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def history(
+    callback: CallbackQuery,
+    state: FSMContext,
+    bot: Bot,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
+    actions = Actions(session)
     _, page_str = callback.data.split("_")
     page = int(page_str)
-    count_transactions = await db.get_count_lottery_transactions()
+    count_transactions = await actions.get_count_lottery_transactions()
     if page < 0:
         await bot.answer_callback_query(callback.id, "Назад некуда")
         return
     if (start := page * batch_size + 1) > count_transactions:
         await bot.answer_callback_query(callback.id, "Дальше некуда")
         return
-    transactions = await db.get_lottery_transactions(page)
+    transactions = await actions.get_lottery_transactions(page)
     end = min(start + 9, count_transactions)
     answer = f"Транзакции {start}-{end} из {count_transactions}\n\n"
     data = list()
@@ -202,7 +232,12 @@ async def history(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 @router.message(States.LotteryHistory)
-async def search_history(message: Message, state: FSMContext):
+async def search_history(
+    message: Message,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert message.text, "Пустое сообщение"
     if message.text.isdigit():
         page = int(message.text)
         if page < 0:
@@ -211,8 +246,9 @@ async def search_history(message: Message, state: FSMContext):
     else:
         await message.answer(text="Сообщение состоит не только из цифр. Введите число")
         return
-    count_transactions = await db.get_count_lottery_transactions()
-    transactions = await db.get_lottery_transactions(page := page // 10)
+    actions = Actions(session)
+    count_transactions = await actions.get_count_lottery_transactions()
+    transactions = await actions.get_lottery_transactions(page := page // 10)
     start = page * batch_size + 1
     end = min(start + 9, count_transactions)
     answer = f"Транзакции {start}-{end} из {count_transactions}\n\n"
@@ -228,7 +264,9 @@ async def search_history(message: Message, state: FSMContext):
 
 
 @router.message()
-async def main_panel(message: Message):
+async def main_panel(
+    message: Message,
+):
     """
     This handler is an entry point for the bot. It shows the main panel with all the available sections.
 
@@ -236,4 +274,3 @@ async def main_panel(message: Message):
     """
     # Send the message with the keyboard
     await message.answer("Главное меню", reply_markup=get_main_keyboard())
-

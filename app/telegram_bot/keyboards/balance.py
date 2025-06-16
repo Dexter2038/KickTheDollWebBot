@@ -18,7 +18,7 @@ def get_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
-def money_keyboard(telegram_id: int, new_balance: int) -> InlineKeyboardMarkup:
+def money_keyboard(telegram_id: int, new_balance: float) -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardBuilder()
     keyboard.add(
         InlineKeyboardButton(

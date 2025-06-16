@@ -1,14 +1,15 @@
 import asyncio
 import sys
 from random import choice, randint
-from typing import List
+from typing import Annotated, List
 
 import aiohttp
+from attr import s
 import schedule
 import uvicorn
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -17,7 +18,8 @@ from starlette.templating import Jinja2Templates
 
 import app.lottery as ltry
 import app.telegram_bot as telegram_bot
-from app.database import db
+from app.db.actions import Actions
+from app.db.session import AsyncSession, get_session
 from app.request_models import *
 from app.tech import is_tech_works
 from app.utils import *
@@ -118,8 +120,10 @@ async def check_init_data() -> JSONResponse:
 
 
 @api_app.post("/lottery/topwinners", response_class=JSONResponse)
-async def get_top_lottery_winners() -> JSONResponse:
-    winners = await ltry.get_top_winners()
+async def get_top_lottery_winners(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    winners = await ltry.get_top_winners(session)
     return JSONResponse(
         {
             "msg": "Топ победители лотереи получены успешно",
@@ -129,28 +133,40 @@ async def get_top_lottery_winners() -> JSONResponse:
 
 
 @api_app.post("/wallet/disconnect", response_class=JSONResponse)
-async def disconnect_wallet(request: Request) -> JSONResponse:
-    await db.remove_user_wallet(request.state.user_id)
+async def disconnect_wallet(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    await Actions(session).remove_user_wallet(request.state.user_id)
     return JSONResponse({"msg": "Кошелек успешно отключен"})
 
 
 @api_app.post("/wallet/connect", response_class=JSONResponse)
-async def connect_wallet(request: Request, data: WalletRequest) -> JSONResponse:
-    await db.add_user_wallet(request.state.user_id, data.wallet_address)
+async def connect_wallet(
+    request: Request,
+    data: WalletRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    await Actions(session).add_user_wallet(request.state.user_id, data.wallet_address)
     return JSONResponse({"msg": "Кошелек успешно подключен"})
 
 
 @api_app.post("/lottery/deposit", response_class=JSONResponse)
 async def make_lottery_deposit(
-    request: Request, data: LotteryBetRequest
+    request: Request,
+    data: LotteryBetRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
-    await ltry.make_deposit(request.state.user_id, data.reward, data.bet)
+    await ltry.make_deposit(session, request.state.user_id, data.reward, data.bet)
     return JSONResponse({"msg": "Ставка успешно принята"})
 
 
 @api_app.post("/guess/bet", response_class=JSONResponse)
-async def make_guess_bet(request: Request, data: CoinBetRequest) -> JSONResponse:
-    if not await db.create_bet(
+async def make_guess_bet(
+    request: Request,
+    data: CoinBetRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    if not await Actions(session).create_bet(
         request.state.user_id, data.coin_name, data.bet, data.time, data.way
     ):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ставка не создана")
@@ -163,8 +179,12 @@ async def make_guess_bet(request: Request, data: CoinBetRequest) -> JSONResponse
 
 
 @api_app.post("/game/params/get", response_class=JSONResponse)
-async def make_game_params(request: Request) -> JSONResponse:
-    money, *bonus, last_visit = await db.get_game_params(request.state.user_id)
+async def make_game_params(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    money, *bonus, last_visit = await Actions(session).get_game_params(
+        request.state.user_id
+    )
     return JSONResponse(
         {
             "msg": "Параметры игры получены успешно",
@@ -178,8 +198,10 @@ async def make_game_params(request: Request) -> JSONResponse:
 
 
 @api_app.post("/game/add/money", response_class=JSONResponse)
-async def add_money(request: Request) -> JSONResponse:
-    await db.add_user_money_balance(request.state.user_id)
+async def add_money(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    await Actions(session).add_user_money_balance(request.state.user_id)
     return JSONResponse({"msg": "Деньги успешно добавлены"})
 
 
@@ -203,17 +225,23 @@ async def get_wallet_for_deposit(
 
 
 @api_app.post("/game/money", response_class=JSONResponse)
-async def invest_game_money(request: Request, data: AmountRequest) -> JSONResponse:
+async def invest_game_money(
+    request: Request,
+    data: AmountRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
     logger.info(
         f"Пользователь {request.state.user_id} получил в главное игре: {data.bet}"
     )
-    await db.invest_game_money(request.state.user_id, data.bet)
+    await Actions(session).invest_game_money(request.state.user_id, data.bet)
     return JSONResponse({"msg": "Деньги успешно вложены"})
 
 
 @api_app.post("/wallet/get_balance", response_class=JSONResponse)
-async def get_wallet_balance(request: Request) -> JSONResponse:
-    if not (player := await db.get_user(request.state.user_id)):
+async def get_wallet_balance(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    if not (player := await Actions(session).get_user(request.state.user_id)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     wallet = player.wallet_address
     balance = await get_ton_balance(wallet)
@@ -222,8 +250,12 @@ async def get_wallet_balance(request: Request) -> JSONResponse:
 
 
 @api_app.post("/money/check", response_class=JSONResponse)
-async def check_money_amount(request: Request, data: AmountRequest) -> JSONResponse:
-    if not (player := await db.get_user(request.state.user_id)):
+async def check_money_amount(
+    request: Request,
+    data: AmountRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    if not (player := await Actions(session).get_user(request.state.user_id)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     logger.info(f"У пользователя: {player.money_balance}. Запрошено: {data.bet}")
     if player.money_balance < data.bet:
@@ -234,8 +266,10 @@ async def check_money_amount(request: Request, data: AmountRequest) -> JSONRespo
 
 
 @api_app.post("/player/get", response_class=JSONResponse)
-async def get_player_by_id(request: Request) -> JSONResponse:
-    if not (player := await db.get_user(request.state.user_id)):
+async def get_player_by_id(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    if not (player := await Actions(session).get_user(request.state.user_id)):
         logger.warning(
             f"Была попытка поиска пользователя под id: {request.state.user_id}"
         )
@@ -253,11 +287,15 @@ async def get_player_by_id(request: Request) -> JSONResponse:
 
 
 @api_app.post("/player/post", response_class=JSONResponse)
-async def create_player(request: Request, data: CreateUserRequest) -> JSONResponse:
+async def create_player(
+    request: Request,
+    data: CreateUserRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
     wallet_address = data.wallet_address
     username = data.username
     telegram_id = data.telegram_id
-    if not await db.create_user(
+    if not await Actions(session).create_user(
         telegram_id=telegram_id, username=username, wallet_address=wallet_address
     ):
         logger.error(
@@ -273,39 +311,47 @@ async def create_player(request: Request, data: CreateUserRequest) -> JSONRespon
 
 
 @api_app.post("/reward/get", response_class=JSONResponse)
-async def find_out_reward(request: Request) -> JSONResponse:
+async def find_out_reward(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
-    reward = await db.get_referral_reward(request.state.user_id)
+    reward = await Actions(session).get_referral_reward(request.state.user_id)
     return JSONResponse({"msg": "Награда забрана", "reward": reward or 0})
 
 
 @api_app.post("/take-reward", response_class=JSONResponse)
-async def take_reward(request: Request) -> JSONResponse:
+async def take_reward(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
-    reward = await db.take_referral_reward(request.state.user_id)
+    reward = await Actions(session).take_referral_reward(request.state.user_id)
     return JSONResponse({"msg": "Награда забрана", "reward": reward})
 
 
 @api_app.post("/reward/post", response_class=JSONResponse)
-async def get_reward(request: Request) -> JSONResponse:
+async def get_reward(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
-    reward = await db.take_referral_reward(request.state.user_id)
+    reward = await Actions(session).take_referral_reward(request.state.user_id)
     logger.info(f"Пользователь {request.state.user_id} получил награду: {reward}")
     return JSONResponse({"msg": "Награда забрана", "reward": reward})
 
 
 @api_app.post("/referral/get", response_class=JSONResponse)
-async def get_referral_count(request: Request) -> JSONResponse:
+async def get_referral_count(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
     """
     Get count of referrals of certain user
     """
-    referral_count = await db.get_referral_count(request.state.user_id)
+    referral_count = await Actions(session).get_referral_count(request.state.user_id)
     return JSONResponse(
         {
             "msg": "Количество рефералов получено",
@@ -330,12 +376,16 @@ async def get_invite_link(request: Request) -> JSONResponse:
 
 @api_app.post("/transaction", response_class=JSONResponse)
 async def create_transaction(
-    request: Request, data: TransactionRequest
+    request: Request,
+    data: TransactionRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     amount = data.amount
     transaction_type = data.transaction_type
 
-    if not await db.create_transaction(request.state.user_id, amount, transaction_type):
+    if not await Actions(session).create_transaction(
+        request.state.user_id, amount, transaction_type
+    ):
         logger.error(
             f"Не удалось создать транзакцию с данными: ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
         )
@@ -350,8 +400,10 @@ async def create_transaction(
 
 
 @api_app.post("/transactions/get")
-async def get_transactions(request: Request) -> JSONResponse:
-    transactions = await db.get_user_transactions(request.state.user_id)
+async def get_transactions(
+    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    transactions = await Actions(session).get_user_transactions(request.state.user_id)
     return JSONResponse(
         {
             "msg": "Транзакции получены",
@@ -362,14 +414,16 @@ async def get_transactions(request: Request) -> JSONResponse:
 
 @api_app.post("/game/finish", response_class=JSONResponse)
 async def create_finished_game(
-    request: Request, data: FinishedGameRequest
+    request: Request,
+    data: FinishedGameRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     game_type = data.game_type
     amount = data.amount
     first_user_id = data.first_user_id
     second_user_id = data.second_user_id
     _hash = generate_room_id()
-    if not await db.mark_finished_game(
+    if not await Actions(session).mark_finished_game(
         game_type, amount, first_user_id, second_user_id, _hash
     ):
         logger.error(
@@ -787,8 +841,10 @@ async def get_currencies() -> JSONResponse:
 
 
 @api_app.post("/lottery", response_class=JSONResponse)
-async def get_lottery() -> JSONResponse:
-    end_time, amount = await ltry.get_current_lottery()
+async def get_lottery(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    end_time, amount = await ltry.get_current_lottery(session)
     return JSONResponse(
         {
             "msg": "Лотерея успешно получена",
@@ -800,13 +856,13 @@ async def get_lottery() -> JSONResponse:
 
 def task_mark_guess_games():
     asyncio.run_coroutine_threadsafe(
-        coro=db.mark_guess_games(), loop=asyncio.get_running_loop()
+        coro=Actions(None).mark_guess_games(), loop=asyncio.get_running_loop()
     )
 
 
 def clear_game_sessions():
     asyncio.run_coroutine_threadsafe(
-        coro=db.clear_game_sessions(), loop=asyncio.get_running_loop()
+        coro=Actions(None).clear_game_sessions(), loop=asyncio.get_running_loop()
     )
 
 
@@ -821,10 +877,7 @@ async def start_bot() -> None:
 
 
 async def main() -> None:
-    await asyncio.gather(
-        # start_bot(),
-        start_uvicorn()
-    )
+    await asyncio.gather(start_bot(), start_uvicorn())
 
 
 if __name__ == "__main__":

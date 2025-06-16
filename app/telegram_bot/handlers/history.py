@@ -1,7 +1,10 @@
+from typing import Annotated
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
-from app.database import db
+from aiogram3_di import Depends
+from app.db.actions import Actions
+from app.db.session import get_session, AsyncSession
 from app.telegram_bot.states import States
 from app.telegram_bot.keyboards import (
     get_nav_keyboard,
@@ -15,17 +18,24 @@ batch_size = 10
 
 
 @router.callback_query(F.data.startswith("History_"))
-async def history(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def history(
+    callback: CallbackQuery,
+    state: FSMContext,
+    bot: Bot,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, page_str = callback.data.split("_")
     page = int(page_str)
-    count_transactions = await db.get_count_transactions()
+    actions = Actions(session)
+    count_transactions = await actions.get_count_transactions()
     if page < 0:
         await bot.answer_callback_query(callback.id, "Назад некуда")
         return
     if (start := page * batch_size + 1) > count_transactions:
         await bot.answer_callback_query(callback.id, "Дальше некуда")
         return
-    transactions = await db.get_transactions(page)
+    transactions = await actions.get_transactions(page)
     end = min(start + 9, count_transactions)
     answer = f"Транзакции {start}-{end} из {count_transactions}\n\n"
     data = list()
@@ -40,7 +50,12 @@ async def history(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 @router.message(States.History)
-async def search_history(message: Message, state: FSMContext):
+async def search_history(
+    message: Message,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert message.text, "Пустое сообщение"
     if message.text.isdigit():
         page = int(message.text)
         if page < 0:
@@ -49,8 +64,9 @@ async def search_history(message: Message, state: FSMContext):
     else:
         await message.answer(text="Сообщение состоит не только из цифр. Введите число")
         return
-    count_transactions = await db.get_count_transactions()
-    transactions = await db.get_transactions(page := page // 10)
+    actions = Actions(session)
+    count_transactions = await actions.get_count_transactions()
+    transactions = await actions.get_transactions(page := page // 10)
     start = page * batch_size + 1
     end = min(start + 9, count_transactions)
     answer = f"Транзакции {start}-{end} из {count_transactions}\n\n"
@@ -66,9 +82,18 @@ async def search_history(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("Histor_"))
-async def search_histor(callback: CallbackQuery):
+async def search_histor(
+    callback: CallbackQuery,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
-    transaction = await db.get_transaction(int(id))
+    transaction = await Actions(session).get_transaction(int(id))
+    if not transaction:
+        await callback.message.edit_text(
+            text="Транзакция не найдена.", reply_markup=get_home_keyboard()
+        )
+        return
     await callback.message.edit_text(
         text=f"ID Транзакции: {transaction.transaction_id}\n"
         f"Хэш транзакции: {transaction.transaction_hash}\n"
@@ -86,9 +111,13 @@ async def search_histor(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("ConfirmTransaction_"))
-async def confirm_transaction(callback: CallbackQuery):
+async def confirm_transaction(
+    callback: CallbackQuery,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
-    if await db.confirm_transaction(int(id)):
+    if await Actions(session).confirm_transaction(int(id)):
         await callback.message.edit_text(
             text="Транзакция успешно подтверждена. Деньги зачислены на баланс.",
             reply_markup=get_home_keyboard(),
@@ -97,4 +126,3 @@ async def confirm_transaction(callback: CallbackQuery):
         await callback.message.edit_text(
             text="Произошла ошибка.", reply_markup=get_home_keyboard()
         )
-

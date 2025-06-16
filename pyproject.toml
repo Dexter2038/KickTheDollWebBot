@@ -20,7 +20,10 @@ dependencies = [
     "schedule (>=1.2.2,<2.0.0)",
     "sqlalchemy (>=2.0.41,<3.0.0)",
     "tontools (==2.0.11)",
-    "uvicorn (>=0.34.3,<0.35.0)"
+    "uvicorn (>=0.34.3,<0.35.0)",
+    "aiogram3-di (>=2.0.0,<3.0.0)",
+    "asyncpg (>=0.30.0,<0.31.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
 ]
 
 [tool.poetry]

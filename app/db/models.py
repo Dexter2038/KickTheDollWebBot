@@ -1,11 +1,10 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from os import environ
 from uuid import uuid4
 
-import sqlalchemy as db
 from loguru import logger
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import BIGINT
@@ -30,11 +29,11 @@ class Users(Model):
     admin: Mapped[bool] = mapped_column(nullable=True, default=None)
     money_balance: Mapped[float] = mapped_column(default=0)
     last_visit_to_bot: Mapped[datetime] = mapped_column(
-        nullable=True, default=datetime.utcnow() - timedelta(hours=5)
+        nullable=True, default=datetime.now(UTC) - timedelta(hours=5)
     )
     bonuses_to_bot: Mapped[int] = mapped_column(nullable=True, default=3)
     total_transactions: Mapped[float] = mapped_column(default=0)
-    joined_at: Mapped[datetime] = mapped_column(default=db.func.current_timestamp())
+    joined_at: Mapped[datetime] = mapped_column(default=func.current_timestamp())
 
 
 class Wallets(Model):
@@ -72,7 +71,7 @@ class FinishedGame(Model):
     amount: Mapped[int] = mapped_column(nullable=False)
     game_hash: Mapped[str] = mapped_column(nullable=False)
     resolved_at: Mapped[datetime] = mapped_column(
-        nullable=False, default=db.func.current_timestamp()
+        nullable=False, default=func.current_timestamp()
     )
 
 
@@ -98,7 +97,7 @@ class Transactions(Model):
     amount: Mapped[float] = mapped_column(nullable=False)
     transaction_hash: Mapped[str] = mapped_column(default=str(uuid4()))
     transaction_type: Mapped[int] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=db.func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(default=func.current_timestamp())
     confirmed_at: Mapped[datetime] = mapped_column(nullable=True, default=None)
 
 
@@ -109,7 +108,7 @@ class LotteryTransactions(Model):
     telegram_id: Mapped[int] = mapped_column(BIGINT, ForeignKey("users.telegram_id"))
     amount: Mapped[float] = mapped_column(nullable=False)
     multiplier: Mapped[float] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=db.func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(default=func.current_timestamp())
     confirmed_at: Mapped[datetime] = mapped_column(nullable=True)
 
 

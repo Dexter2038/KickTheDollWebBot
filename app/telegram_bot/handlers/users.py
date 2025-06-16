@@ -1,7 +1,10 @@
+from typing import Annotated
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
-from app.database import db
+from aiogram3_di import Depends
+from app.db.actions import Actions
+from app.db.session import get_session, AsyncSession
 from ..states import States
 from ..keyboards import (
     get_nav_keyboard,
@@ -17,17 +20,24 @@ batch_size = 10
 
 
 @router.callback_query(F.data.startswith("Users_"))
-async def users(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def users(
+    callback: CallbackQuery,
+    state: FSMContext,
+    bot: Bot,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, page_str = callback.data.split("_")
     page = int(page_str)
-    count_users = await db.get_count_users()
+    actions = Actions(session)
+    count_users = await actions.get_count_users()
     if page < 0:
         await bot.answer_callback_query(callback.id, "Назад некуда")
         return
     if (start := page * batch_size + 1) > count_users:
         await bot.answer_callback_query(callback.id, "Дальше некуда")
         return
-    users = await db.get_users(page)
+    users = await actions.get_users(page)
     end = min(start + 9, count_users)
     answer = f"Пользователи {start}-{end} из {count_users}\n\n"
     data = list()
@@ -42,14 +52,20 @@ async def users(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 @router.message(States.Users)
-async def search_users(message: Message, state: FSMContext):
+async def search_users(
+    message: Message,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert message.text, "Пустое сообщение"
     if message.text.isdigit():
         page = int(message.text)
     else:
         await message.answer(text="Сообщение состоит не только из цифр. Введите число")
         return
-    count_users = await db.get_count_users()
-    users = await db.get_users(page := page // 10)
+    actions = Actions(session)
+    count_users = await actions.get_count_users()
+    users = await actions.get_users(page := page // 10)
     start = page * batch_size + 1
     end = min(start + 9, count_users)
     answer = f"Пользователи {start}-{end} из {count_users}\n\n"
@@ -65,9 +81,20 @@ async def search_users(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("User_"))
-async def user(callback: CallbackQuery, state: FSMContext):
+async def user(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
-    user = await db.get_user(id)
+    if not id.isdigit():
+        await callback.message.edit_text(
+            text="ID пользователя состоит не только из цифр"
+        )
+        return
+    id = int(id)
+    user = await Actions(session).get_user(id)
     await callback.message.edit_text(
         text=(
             f"ID Владельца: {user.telegram_id}\n"
@@ -81,7 +108,14 @@ async def user(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("ClearUser_"))
 async def clear_user(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
+    if not id.isdigit():
+        await callback.message.edit_text(
+            text="ID пользователя состоит не только из цифр"
+        )
+        return
+    id = int(id)
     await callback.message.edit_text(
         text=(f"Вы действительно хотите очистить пользователя с ID {id}?\n(Да/Нет)"),
         reply_markup=get_sure_clear_keyboard(id),
@@ -89,9 +123,21 @@ async def clear_user(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("SureClearUser_"))
-async def sure_clear_user(callback: CallbackQuery, state: FSMContext):
+async def sure_clear_user(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
-    await db.clear_user(id)
+    if not id.isdigit():
+        await callback.message.edit_text(
+            text="ID пользователя состоит не только из цифр",
+            reply_markup=get_home_keyboard(),
+        )
+        return
+    id = int(id)
+    await Actions(session).clear_user(id)
     await callback.message.edit_text(
         text=(f"Пользователь с ID {id} очищен"), reply_markup=get_home_keyboard()
     )
@@ -99,6 +145,7 @@ async def sure_clear_user(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("ChangeMoneyBalance_"))
 async def change_money_balance(callback: CallbackQuery, state: FSMContext):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id = callback.data.split("_")
     await state.set_state(States.ChangeMoneyBalance)
     await state.set_data({"balance_id": id})
@@ -109,6 +156,7 @@ async def change_money_balance(callback: CallbackQuery, state: FSMContext):
 
 @router.message(States.ChangeMoneyBalance)
 async def change_money_balance_ask(message: Message, state: FSMContext):
+    assert message.text, "Пустое сообщение"
     id = (await state.get_data())["balance_id"]
     try:
         money_balance = float(message.text)
@@ -126,14 +174,25 @@ async def change_money_balance_ask(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("SureChangeMoneyBalance_"))
-async def sure_change_money_balance(callback: CallbackQuery, state: FSMContext):
+async def sure_change_money_balance(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
+):
+    assert callback.data and callback.message, "Пустое сообщение"
     _, id, balance = callback.data.split("_")
+    if not id.isdigit():
+        await callback.message.edit_text(
+            text="ID пользователя состоит не только из цифр",
+            reply_markup=get_home_keyboard(),
+        )
+        return
+    id = int(id)
     balance = float(balance)
-    await db.edit_money_balance(id, balance)
+    await Actions(session).edit_money_balance(id, balance)
     await callback.message.edit_text(
         text=(
             f"Монетный баланс пользователя с ID Телеграмма {id} изменен на {balance:.2f}"
         ),
         reply_markup=get_home_keyboard(),
     )
-
