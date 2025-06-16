@@ -8,7 +8,7 @@ import schedule
 import uvicorn
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -109,274 +109,295 @@ wallets = []
 
 
 @api_app.post("/initdata/check", response_class=JSONResponse)
-async def check_init_data():
+async def check_init_data() -> JSONResponse:
     if is_tech_works():
-        return {"msg": "Технические работы", "ok": False, "status": 404}
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, detail="Технические работы"
+        )
+    return JSONResponse({"msg": "Инициализация успешна"})
 
 
 @api_app.post("/lottery/topwinners", response_class=JSONResponse)
-async def get_top_lottery_winners():
+async def get_top_lottery_winners() -> JSONResponse:
     winners = await ltry.get_top_winners()
-    return {
-        "msg": "Топ победители лотереи получены успешно",
-        "ok": True,
-        "winners": winners,
-    }
+    return JSONResponse(
+        {
+            "msg": "Топ победители лотереи получены успешно",
+            "winners": winners,
+        }
+    )
 
 
 @api_app.post("/wallet/disconnect", response_class=JSONResponse)
-async def disconnect_wallet(request: Request):
+async def disconnect_wallet(request: Request) -> JSONResponse:
     await db.remove_user_wallet(request.state.user_id)
-    return {"msg": "Кошелек успешно отключен", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Кошелек успешно отключен"})
 
 
 @api_app.post("/wallet/connect", response_class=JSONResponse)
-async def connect_wallet(request: Request, data: WalletRequest):
+async def connect_wallet(request: Request, data: WalletRequest) -> JSONResponse:
     await db.add_user_wallet(request.state.user_id, data.wallet_address)
-    return {"msg": "Кошелек успешно подключен", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Кошелек успешно подключен"})
 
 
 @api_app.post("/lottery/deposit", response_class=JSONResponse)
-async def make_lottery_deposit(request: Request, data: LotteryBetRequest):
+async def make_lottery_deposit(
+    request: Request, data: LotteryBetRequest
+) -> JSONResponse:
     await ltry.make_deposit(request.state.user_id, data.reward, data.bet)
-    return {"msg": "Ставка успешно принята", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Ставка успешно принята"})
 
 
 @api_app.post("/guess/bet", response_class=JSONResponse)
-async def make_guess_bet(request: Request, data: CoinBetRequest):
-    bet = await db.create_bet(
+async def make_guess_bet(request: Request, data: CoinBetRequest) -> JSONResponse:
+    if not await db.create_bet(
         request.state.user_id, data.coin_name, data.bet, data.time, data.way
+    ):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ставка не создана")
+    return JSONResponse(
+        {
+            "msg": "Ставка успешно создана",
+        },
+        status.HTTP_201_CREATED,
     )
-    if not bet:
-        return {"msg": "Ставка не создана", "ok": False, "status": 400}
-    return {
-        "msg": "Ставка успешно создана",
-        "ok": True,
-        "status": 201,
-    }
 
 
 @api_app.post("/game/params/get", response_class=JSONResponse)
-async def make_game_params(request: Request):
+async def make_game_params(request: Request) -> JSONResponse:
     money, *bonus, last_visit = await db.get_game_params(request.state.user_id)
-    return {
-        "msg": "Параметры игры получены успешно",
-        "ok": True,
-        "params": {
-            "money": money,
-            "bonus": 1 if all(bonus) else -1,
-            "last_visit": last_visit,
-        },
-    }
+    return JSONResponse(
+        {
+            "msg": "Параметры игры получены успешно",
+            "params": {
+                "money": money,
+                "bonus": 1 if all(bonus) else -1,
+                "last_visit": last_visit,
+            },
+        }
+    )
 
 
 @api_app.post("/game/add/money", response_class=JSONResponse)
-async def add_money(request: Request):
+async def add_money(request: Request) -> JSONResponse:
     await db.add_user_money_balance(request.state.user_id)
-    return {"msg": "Деньги успешно добавлены", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Деньги успешно добавлены"})
 
 
 @api_app.post("/wallet/deposit", response_class=JSONResponse)
-async def get_wallet_for_deposit(request: Request, data: WalletAmountRequest):
+async def get_wallet_for_deposit(
+    request: Request, data: WalletAmountRequest
+) -> JSONResponse:
     balances = []
     if wallets:
         for wallet in wallets:
             balances.append(await get_ton_balance(wallet))
     else:
-        return {"msg": "Ошибка, кошелька нет", "ok": False, "status": 404}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Кошельки не найдены")
     index = balances.index(min(balances))
-    return {
-        "msg": "Баланс успешно пополнен",
-        "ok": True,
-        "wallet": wallets[index],
-    }
+    return JSONResponse(
+        {
+            "msg": "Баланс успешно пополнен",
+            "wallet": wallets[index],
+        }
+    )
 
 
 @api_app.post("/game/money", response_class=JSONResponse)
-async def invest_game_money(request: Request, data: AmountRequest):
+async def invest_game_money(request: Request, data: AmountRequest) -> JSONResponse:
     logger.info(
         f"Пользователь {request.state.user_id} получил в главное игре: {data.bet}"
     )
     await db.invest_game_money(request.state.user_id, data.bet)
-    return {"msg": "Деньги успешно вложены", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Деньги успешно вложены"})
 
 
 @api_app.post("/wallet/get_balance", response_class=JSONResponse)
-async def get_wallet_balance(request: Request):
-    player = await db.get_user(request.state.user_id)
-    if not player:
-        return {"msg": "Пользователь не найден", "ok": False, "status": 404}
+async def get_wallet_balance(request: Request) -> JSONResponse:
+    if not (player := await db.get_user(request.state.user_id)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     wallet = player.wallet_address
     balance = await get_ton_balance(wallet)
     logger.info(f"Баланс пользователя {request.state.user_id} получен: {balance}")
-    return {"msg": "Баланс получен", "ok": True, "balance": balance}
+    return JSONResponse({"msg": "Баланс получен", "balance": balance})
 
 
 @api_app.post("/money/check", response_class=JSONResponse)
-async def check_money_amount(request: Request, data: AmountRequest):
-    player = await db.get_user(request.state.user_id)
-    if not player:
-        return {"msg": "Пользователь не найден", "ok": False, "status": 404}
+async def check_money_amount(request: Request, data: AmountRequest) -> JSONResponse:
+    if not (player := await db.get_user(request.state.user_id)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     logger.info(f"У пользователя: {player.money_balance}. Запрошено: {data.bet}")
     if player.money_balance < data.bet:
-        return {"msg": "Недостаточно монет", "ok": False, "status": 402}
-    return {"msg": "Монет достаточно", "ok": True, "status": 200}
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED, detail="Недостаточно монет"
+        )
+    return JSONResponse({"msg": "Монет достаточно"})
 
 
 @api_app.post("/player/get", response_class=JSONResponse)
-async def get_player_by_id(request: Request):
-    player = await db.get_user(request.state.user_id)
-    if player:
-        logger.info(f"Пользователь {request.state.user_id} был взят из базы данных")
-        return {
+async def get_player_by_id(request: Request) -> JSONResponse:
+    if not (player := await db.get_user(request.state.user_id)):
+        logger.warning(
+            f"Была попытка поиска пользователя под id: {request.state.user_id}"
+        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+    logger.info(f"Пользователь {request.state.user_id} был взят из базы данных")
+    return JSONResponse(
+        {
             "msg": "Игрок успешно найден",
-            "ok": True,
             "player": {
                 "wallet_address": player.wallet_address,
                 "money_balance": player.money_balance,
             },
         }
-    else:
-        logger.warning(
-            f"Была попытка поиска пользователя под id: {request.state.user_id}"
-        )
-        return {"ok": False, "status": 404, "msg": "Игрок не найден"}
+    )
 
 
 @api_app.post("/player/post", response_class=JSONResponse)
-async def create_player(request: Request, data: CreateUserRequest):
+async def create_player(request: Request, data: CreateUserRequest) -> JSONResponse:
     wallet_address = data.wallet_address
     username = data.username
     telegram_id = data.telegram_id
-    if await db.create_user(
+    if not await db.create_user(
         telegram_id=telegram_id, username=username, wallet_address=wallet_address
     ):
-        logger.info(
-            f"Создан пользователь. ID: {data.telegram_id}. Никнейм: {data.username}. Адрес кошелька: {data.wallet_address}"
-        )
-        return {"msg": "Игрок успешно создан", "ok": True, "status": 201}
-    else:
         logger.error(
             f"Не удалось создать игрока с данными: ID: {data.telegram_id}. Никнейм: {data.username}. Адрес кошелька: {data.wallet_address}"
         )
-        return {"ok": False, "status": 400, "msg": "Ошибка создания игрока"}
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Ошибка создания игрока"
+        )
+    logger.info(
+        f"Создан пользователь. ID: {data.telegram_id}. Никнейм: {data.username}. Адрес кошелька: {data.wallet_address}"
+    )
+    return JSONResponse({"msg": "Игрок успешно создан"}, status.HTTP_201_CREATED)
 
 
 @api_app.post("/reward/get", response_class=JSONResponse)
-async def find_out_reward(request: Request):
+async def find_out_reward(request: Request) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
     reward = await db.get_referral_reward(request.state.user_id)
-    return {"msg": "Награда забрана", "ok": True, "reward": reward or 0}
+    return JSONResponse({"msg": "Награда забрана", "reward": reward or 0})
 
 
 @api_app.post("/take-reward", response_class=JSONResponse)
-async def take_reward(request: Request):
+async def take_reward(request: Request) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
     reward = await db.take_referral_reward(request.state.user_id)
-    return {"msg": "Награда забрана", "ok": True, "reward": reward}
+    return JSONResponse({"msg": "Награда забрана", "reward": reward})
 
 
 @api_app.post("/reward/post", response_class=JSONResponse)
-async def get_reward(request: Request):
+async def get_reward(request: Request) -> JSONResponse:
     """
     Get amount of reward for every of referal
     """
     reward = await db.take_referral_reward(request.state.user_id)
     logger.info(f"Пользователь {request.state.user_id} получил награду: {reward}")
-    return {"msg": "Награда забрана", "ok": True, "reward": reward}
+    return JSONResponse({"msg": "Награда забрана", "reward": reward})
 
 
 @api_app.post("/referral/get", response_class=JSONResponse)
-async def get_referral_count(request: Request):
+async def get_referral_count(request: Request) -> JSONResponse:
     """
     Get count of referrals of certain user
     """
     referral_count = await db.get_referral_count(request.state.user_id)
-    return {
-        "msg": "Количество рефералов получено",
-        "ok": True,
-        "referral_count": referral_count,
-    }
+    return JSONResponse(
+        {
+            "msg": "Количество рефералов получено",
+            "referral_count": referral_count,
+        }
+    )
 
 
 @api_app.post("/invite/link", response_class=JSONResponse)
-async def get_invite_link(request: Request):
+async def get_invite_link(request: Request) -> JSONResponse:
     """
     Get invitation link for certain user
     """
     invite_link = await get_invitation_link(request.state.user_id)
-    return {
-        "msg": "Инвайт ссылка получена",
-        "ok": True,
-        "invite_link": invite_link,
-    }
+    return JSONResponse(
+        {
+            "msg": "Ссылка для приглашения получена",
+            "invite_link": invite_link,
+        }
+    )
 
 
 @api_app.post("/transaction", response_class=JSONResponse)
-async def create_transaction(request: Request, data: TransactionRequest):
+async def create_transaction(
+    request: Request, data: TransactionRequest
+) -> JSONResponse:
     amount = data.amount
     transaction_type = data.transaction_type
 
-    if await db.create_transaction(request.state.user_id, amount, transaction_type):
-        logger.info(
-            f"Создана транзакция. ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
-        )
-        return {"msg": "Транзакция успешно создана", "ok": True, "status": 201}
-    else:
+    if not await db.create_transaction(request.state.user_id, amount, transaction_type):
         logger.error(
             f"Не удалось создать транзакцию с данными: ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
         )
-        return {"ok": False, "status": 400, "msg": "Ошибка создания транзакции"}
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Ошибка создания транзакции"
+        )
+
+    logger.info(
+        f"Создана транзакция. ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
+    )
+    return JSONResponse({"msg": "Транзакция успешно создана"}, status.HTTP_201_CREATED)
 
 
 @api_app.post("/transactions/get")
-async def get_transactions(request: Request):
+async def get_transactions(request: Request) -> JSONResponse:
     transactions = await db.get_user_transactions(request.state.user_id)
-    return {
-        "msg": "Транзакции получены",
-        "ok": True,
-        "data": transactions,
-    }
+    return JSONResponse(
+        {
+            "msg": "Транзакции получены",
+            "data": transactions,
+        }
+    )
 
 
 @api_app.post("/game/finish", response_class=JSONResponse)
-async def create_finished_game(request: Request, data: FinishedGameRequest):
+async def create_finished_game(
+    request: Request, data: FinishedGameRequest
+) -> JSONResponse:
     game_type = data.game_type
     amount = data.amount
     first_user_id = data.first_user_id
     second_user_id = data.second_user_id
     _hash = generate_room_id()
-    if await db.mark_finished_game(
+    if not await db.mark_finished_game(
         game_type, amount, first_user_id, second_user_id, _hash
     ):
-        logger.info(
-            f"Игра {game_type} {f'между {first_user_id} и {second_user_id}' if second_user_id else f'от {first_user_id}'} "
-            f"завершена. Сумма: {amount}"
-        )
-        return {"msg": "Игра успешно завершена", "ok": True, "status": 201}
-    else:
         logger.error(
             f"Не удалось завершить игру с данными: тип игры {game_type}, сумма {amount}, ID первого игрока {first_user_id}, ID второго игрока {second_user_id}"
         )
-        return {"ok": False, "status": 400, "msg": "Ошибка завершения игры"}
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Ошибка завершения игры"
+        )
+
+    logger.info(
+        f"Игра {game_type} {f'между {first_user_id} и {second_user_id}' if second_user_id else f'от {first_user_id}'} "
+        f"завершена. Сумма: {amount}"
+    )
+    return JSONResponse({"msg": "Игра успешно завершена"}, status.HTTP_201_CREATED)
 
 
 @api_app.get("/dice/rooms", response_class=JSONResponse)
-async def get_dice_rooms():
+async def get_dice_rooms() -> JSONResponse:
     available_rooms = [
         {"room_id": room_id, "name": details["name"], "reward": details["reward"]}
         for room_id, details in dice_rooms.items()
         if not details["going"]
     ]
-    return {"ok": True, "rooms": available_rooms}
+    return JSONResponse({"rooms": available_rooms})
 
 
 @api_app.post("/dice/create", response_class=JSONResponse)
-async def create_dice_room(request: Request, data: CreateRoomRequest):
+async def create_dice_room(request: Request, data: CreateRoomRequest) -> JSONResponse:
     new_room_id = generate_room_id()
     name = data.name
     reward = data.reward
@@ -395,21 +416,22 @@ async def create_dice_room(request: Request, data: CreateRoomRequest):
     logger.info(
         f"Пользователь {request.state.user_id} создал комнату кубиков с наградой {reward}$"
     )
-    return {
-        "ok": True,
-        "msg": "Комната успешно создана",
-        "room_id": new_room_id,
-    }
+    return JSONResponse(
+        {
+            "msg": "Комната успешно создана",
+            "room_id": new_room_id,
+        }
+    )
 
 
 @api_app.post("/dice/join", response_class=JSONResponse)
-async def join_dice_room(request: Request, data: RoomRequest):
+async def join_dice_room(request: Request, data: RoomRequest) -> JSONResponse:
     current_room = dice_rooms[data.room_id]
     if len(current_room["players"]) > 1:
         logger.info(
             f"Пользователь {request.state.user_id} попытался присоединиться к заполненной комнате {data.room_id}"
         )
-        return {"msg": "Комната заполнена.", "ok": False, "status": 403}
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Комната заполнена.")
     current_room["going"] = True
     current_room["players"].append(request.state.user_id)
     current_room["hands"][1] = 0
@@ -418,23 +440,24 @@ async def join_dice_room(request: Request, data: RoomRequest):
     logger.info(
         f"Пользователь {request.state.user_id} присоединился к комнате {data.room_id}"
     )
-    return {
-        "msg": "Вы успешно присоединились к комнате!",
-        "ok": True,
-        "room_id": data.room_id,
-        "name": current_room["name"],
-        "reward": current_room["reward"],
-    }
+    return JSONResponse(
+        {
+            "msg": "Вы успешно присоединились к комнате!",
+            "room_id": data.room_id,
+            "name": current_room["name"],
+            "reward": current_room["reward"],
+        }
+    )
 
 
 @api_app.post("/dice/roll", response_class=JSONResponse)
-async def roll_dice(request: Request, data: RoomRequest):
+async def roll_dice(request: Request, data: RoomRequest) -> JSONResponse:
     current_room = dice_rooms[data.room_id]
     if current_room["active_player"] != 0:
         logger.info(
             f"Пользователь {request.state.user_id} попытался бросить кубики, но не его ход в комнате {data.room_id}"
         )
-        return {"msg": "Не ваш ход.", "ok": False, "status": 401}
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Не ваш ход.")
     player_id = current_room["players"].index(request.state.user_id)
     current_room["count"][player_id] += 1
     dice_value = randint(1, 6)
@@ -450,72 +473,83 @@ async def roll_dice(request: Request, data: RoomRequest):
     logger.info(
         f"Пользователь {request.state.user_id} бросил кубики в комнате {request.state.user_id}"
     )
-    return {"msg": "Вы бросили кубики!", "ok": True, "dice": dice_value}
+    return JSONResponse({"msg": "Вы бросили кубики!", "dice": dice_value})
 
 
 @api_app.get("/dice/reward", response_class=JSONResponse)
-async def get_dice_reward(room_id: str):
-    if room_id not in dice_rooms:
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room = dice_rooms[room_id]
-    return {
-        "msg": "Награда забрана.",
-        "ok": True,
-        "reward": current_room["reward"],
-    }
+async def get_dice_reward(data: RoomRequest) -> JSONResponse:
+    if data.room_id not in dice_rooms:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена")
+    current_room = dice_rooms[data.room_id]
+    return JSONResponse(
+        {
+            "msg": "Награда забрана.",
+            "reward": current_room["reward"],
+        }
+    )
 
 
 @api_app.get("/dice/updates", response_class=JSONResponse)
-async def get_dice_updates(player_id: int, room_id: str):
-    if room_id not in dice_rooms:
+async def get_dice_updates(request: Request, data: RoomRequest) -> JSONResponse:
+    if data.room_id not in dice_rooms:
         logger.info(
-            f"Пользователь {player_id} запросил обновления в несуществующей комнате {room_id}"
+            f"Пользователь {request.state.user_id} запросил обновления в несуществующей комнате {data.room_id}"
         )
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room = dice_rooms[room_id]
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена")
+    current_room = dice_rooms[data.room_id]
     if any(item == 3 for item in current_room["results"].values()):
-        self_idx = current_room["players"].index(player_id)
+        self_idx = current_room["players"].index(request.state.user_id)
         self = current_room["results"][self_idx]
         opponent = current_room["results"][int(not self_idx)]
         if self > opponent:
-            logger.info(f"Пользователь {player_id} выиграл в комнате {room_id}")
-            return {"msg": "Вы выиграли!", "ok": True, "status": 200}
+            logger.info(
+                f"Пользователь {request.state.user_id} выиграл в комнате {data.room_id}"
+            )
+            return JSONResponse({"msg": "Вы выиграли!"})
         elif self < opponent:
-            logger.info(f"Пользователь {player_id} проиграл в комнате {room_id}")
-            return {"msg": "Вы проиграли!", "ok": True, "status": 200}
+            logger.info(
+                f"Пользователь {request.state.user_id} проиграл в комнате {data.room_id}"
+            )
+            return JSONResponse({"msg": "Вы проиграли!"})
         else:
-            logger.info(f"Ничья в комнате {room_id}")
-            return {"msg": "Ничья!", "ok": True, "status": 200}
+            logger.info(f"Ничья в комнате {data.room_id}")
+            return JSONResponse({"msg": "Ничья!"})
     if len(current_room["players"]) < 2:
-        logger.info(f"Противник пользователя {player_id} вышел из комнаты {room_id}")
-        return {
-            "msg": "Противник вышел из игры! Вы выиграли!",
-            "ok": True,
-        }
-    self_idx = current_room["players"].index(player_id)
+        logger.info(
+            f"Противник пользователя {request.state.user_id} вышел из комнаты {data.room_id}"
+        )
+        return JSONResponse(
+            {
+                "msg": "Противник вышел из игры! Вы выиграли!",
+            }
+        )
+    self_idx = current_room["players"].index(request.state.user_id)
     opponent_idx = int(not self_idx)
     logger.info(
-        f"Пользователь {player_id} успешно получил обновления в комнате {room_id}"
+        f"Пользователь {request.state.user_id} успешно получил обновления в комнате {data.room_id}"
     )
-    return {
-        "msg": "Обновления успешно получены.",
-        "ok": True,
-        "active_player": current_room["active_player"] == self_idx,
-        "self": {
-            "hands": current_room["hands"][self_idx],
-            "count": current_room["count"][self_idx],
-            "results": current_room["results"][self_idx],
-        },
-        "opponent": {
-            "hands": current_room["hands"][opponent_idx],
-            "count": current_room["count"][opponent_idx],
-            "results": current_room["results"][opponent_idx],
-        },
-    }
+    return JSONResponse(
+        {
+            "msg": "Обновления успешно получены.",
+            "active_player": current_room["active_player"] == self_idx,
+            "self": {
+                "hands": current_room["hands"][self_idx],
+                "count": current_room["count"][self_idx],
+                "results": current_room["results"][self_idx],
+            },
+            "opponent": {
+                "hands": current_room["hands"][opponent_idx],
+                "count": current_room["count"][opponent_idx],
+                "results": current_room["results"][opponent_idx],
+            },
+        }
+    )
 
 
 @api_app.post("/blackjack/create", response_class=JSONResponse)
-async def create_blackjack_room(request: Request, data: CreateRoomRequest):
+async def create_blackjack_room(
+    request: Request, data: CreateRoomRequest
+) -> JSONResponse:
     name = data.name
     reward = data.reward
     new_room_id = generate_room_id()
@@ -534,21 +568,23 @@ async def create_blackjack_room(request: Request, data: CreateRoomRequest):
     logger.info(
         f"Пользователь {request.state.user_id} создал комнату блэкджека с наградой {reward}$"
     )
-    return {
-        "msg": "Комната успешно создана!",
-        "ok": True,
-        "room_id": new_room_id,
-    }
+    return JSONResponse(
+        {
+            "msg": "Комната успешно создана!",
+            "room_id": new_room_id,
+        },
+        status.HTTP_201_CREATED,
+    )
 
 
 @api_app.post("/blackjack/join", response_class=JSONResponse)
-async def join_blackjack_room(request: Request, data: RoomRequest):
+async def join_blackjack_room(request: Request, data: RoomRequest) -> JSONResponse:
     current_room = blackjack_rooms[data.room_id]
     if len(current_room["players"]) > 1:
         logger.info(
             f"Пользователь {request.state.user_id} попытался присоединиться к заполненной комнате {data.room_id}"
         )
-        return {"msg": "Комната заполнена.", "ok": False, "status": 403}
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Комната заполнена.")
     current_room["going"] = True
     current_room["players"].append(request.state.user_id)
     current_room["hands"][1] = [choice(cards_52), choice(cards_52)]
@@ -557,51 +593,52 @@ async def join_blackjack_room(request: Request, data: RoomRequest):
     logger.info(
         f"Пользователь {request.state.user_id} присоединился к комнате {data.room_id}"
     )
-    return {
-        "msg": "Вы успешно присоединились к комнате!",
-        "ok": True,
-        "room_id": data.room_id,
-        "name": current_room["name"],
-        "reward": current_room["reward"],
-    }
+    return JSONResponse(
+        {
+            "msg": "Вы успешно присоединились к комнате!",
+            "room_id": data.room_id,
+            "name": current_room["name"],
+            "reward": current_room["reward"],
+        }
+    )
 
 
 @api_app.post("/blackjack/pass", response_class=JSONResponse)
-async def pass_card(request: Request, data: RoomRequest):
+async def pass_card(request: Request, data: RoomRequest) -> JSONResponse:
     if data.room_id not in blackjack_rooms:
         logger.info(
             f"Пользователь {request.state.user_id} попытался оставить карту в несуществующей комнате {data.room_id}"
         )
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена.")
     current_room = blackjack_rooms[data.room_id]
     player_idx = current_room["players"].index(request.state.user_id)
     if current_room["active_player"] != player_idx:
         logger.info(
             f"Пользователь {request.state.user_id} пытался оставить карту, но не его ход в комнате {data.room_id}"
         )
-        return {"msg": "Не ваш ход.", "ok": False, "status": 401}
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Не ваш ход.")
     current_room["active_player"] = int(not player_idx)  # Reverse active player
     current_room["count"][player_idx] += 1
     logger.info(
         f"Пользователь {request.state.user_id} оставил карту в комнате {data.room_id}"
     )
-    return {"msg": "Вы оставили карты", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Вы оставили карты"})
 
 
 @api_app.post("/blackjack/take", response_class=JSONResponse)
-async def take_card(request: Request, data: RoomRequest):
+async def take_card(request: Request, data: RoomRequest) -> JSONResponse:
     if data.room_id not in blackjack_rooms:
         logger.info(
             f"Пользователь {request.state.user_id} попытался взять карту в несуществующей комнате {data.room_id}"
         )
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена.")
     current_room = blackjack_rooms[data.room_id]
     player_idx = current_room["players"].index(request.state.user_id)
     if current_room["active_player"] != player_idx:
         logger.info(
             f"Пользователь {request.state.user_id} пытался взять карту, но не его ход в комнате {data.room_id}"
         )
-        return {"msg": "Не ваш ход.", "ok": False, "status": 401}
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Не ваш ход.")
     current_room["hands"][player_idx].append(choice(cards_52))
     player_hand = current_room["hands"][player_idx]
     if calculate_hand_value(player_hand) > 21:
@@ -615,103 +652,113 @@ async def take_card(request: Request, data: RoomRequest):
         logger.info(
             f"У пользователя {request.state.user_id} перебор в комнате {data.room_id}"
         )
-        return {
-            "msg": "У вас перебор.",
-            "ok": True,
-            "status": 202,
-            "hand": player_hand,
-            "opponent": opponent,
-        }
+        return JSONResponse(
+            {
+                "msg": "У вас перебор.",
+                "hand": player_hand,
+                "opponent": opponent,
+            },
+            status.HTTP_202_ACCEPTED,
+        )
     logger.info(
         f"Пользователь {request.state.user_id} взял карту в комнате {data.room_id}"
     )
-    return {"msg": "Вы взяли карту.", "ok": True, "hand": player_hand}
+    return JSONResponse({"msg": "Вы взяли карту.", "hand": player_hand})
 
 
 @api_app.get("/blackjack/updates", response_class=JSONResponse)
-async def get_blackjack_updates(player_id: int, room_id: str):
-    if room_id not in blackjack_rooms:
+async def get_blackjack_updates(request: Request, data: RoomRequest) -> JSONResponse:
+    if data.room_id not in blackjack_rooms:
         logger.info(
-            f"Пользователь {player_id} запросил обновления в несуществующей комнате {room_id}"
+            f"Пользователь {request.state.user_id} запросил обновления в несуществующей комнате {data.room_id}"
         )
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room = blackjack_rooms[room_id]
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена.")
+    current_room = blackjack_rooms[data.room_id]
     if any(item == 3 for item in current_room["results"].values()):
-        self_idx = current_room["players"].index(player_id)
+        self_idx = current_room["players"].index(request.state.user_id)
         self = current_room["results"][self_idx]
         opponent = current_room["results"][int(not self_idx)]
         if self > opponent:
-            logger.info(f"Пользователь {player_id} выиграл в комнате {room_id}")
-            return {"msg": "Вы выиграли!", "ok": True, "status": 200}
+            logger.info(
+                f"Пользователь {request.state.user_id} выиграл в комнате {data.room_id}"
+            )
+            return JSONResponse({"msg": "Вы выиграли!"})
         elif self < opponent:
-            logger.info(f"Пользователь {player_id} проиграл в комнате {room_id}")
-            return {"msg": "Вы проиграли!", "ok": True, "status": 200}
+            logger.info(
+                f"Пользователь {request.state.user_id} проиграл в комнате {data.room_id}"
+            )
+            return JSONResponse({"msg": "Вы проиграли!"})
         else:
-            logger.info(f"Ничья в комнате {room_id}")
-            return {"msg": "Ничья!", "ok": True, "status": 200}
+            logger.info(f"Ничья в комнате {data.room_id}")
+            return JSONResponse({"msg": "Ничья!"})
     if len(current_room["players"]) < 2:
-        logger.info(f"Противник пользователя {player_id} вышел из комнаты {room_id}")
-        return {
-            "msg": "Противник вышел из игры! Вы выиграли!",
-            "ok": True,
-        }
-    self_idx = current_room["players"].index(player_id)
+        logger.info(
+            f"Противник пользователя {request.state.user_id} вышел из комнаты {data.room_id}"
+        )
+        return JSONResponse(
+            {
+                "msg": "Противник вышел из игры! Вы выиграли!",
+            }
+        )
+    self_idx = current_room["players"].index(request.state.user_id)
     opponent_idx = int(not self_idx)
     logger.info(
-        f"Пользователь {player_id} успешно получил обновления в комнате {room_id}"
+        f"Пользователь {request.state.user_id} успешно получил обновления в комнате {data.room_id}"
     )
-    return {
-        "msg": "Обновления успешно получены.",
-        "ok": True,
-        "active_player": current_room["active_player"] == self_idx,
-        "self": {
-            "hands": current_room["hands"][self_idx],
-            "count": current_room["count"][self_idx],
-            "results": current_room["results"][self_idx],
-        },
-        "opponent": {
-            "hands": current_room["hands"][opponent_idx],
-            "count": current_room["count"][opponent_idx],
-            "results": current_room["results"][opponent_idx],
-        },
-    }
+    return JSONResponse(
+        {
+            "msg": "Обновления успешно получены.",
+            "active_player": current_room["active_player"] == self_idx,
+            "self": {
+                "hands": current_room["hands"][self_idx],
+                "count": current_room["count"][self_idx],
+                "results": current_room["results"][self_idx],
+            },
+            "opponent": {
+                "hands": current_room["hands"][opponent_idx],
+                "count": current_room["count"][opponent_idx],
+                "results": current_room["results"][opponent_idx],
+            },
+        }
+    )
 
 
 @api_app.get("/blackjack/rooms", response_class=JSONResponse)
-async def get_blackjack_rooms():
+async def get_blackjack_rooms() -> JSONResponse:
     available_rooms = [
         {"room_id": room_id, "name": details["name"], "reward": details["reward"]}
         for room_id, details in blackjack_rooms.items()
         if not details["going"]
     ]
-    return {"ok": True, "rooms": available_rooms}
+    return JSONResponse({"rooms": available_rooms})
 
 
 @api_app.post("/blackjack/leave", response_class=JSONResponse)
-async def leave_blackjack_room(request: Request, data: RoomRequest):
+async def leave_blackjack_room(request: Request, data: RoomRequest) -> JSONResponse:
     if data.room_id not in blackjack_rooms:
         logger.info(
             f"Пользователь {request.state.user_id} пытался выйти из несуществующей комнаты {data.room_id}"
         )
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена.")
     current_room = blackjack_rooms[data.room_id]
     if request.state.user_id not in current_room["players"]:
-        return {"msg": "Ты не в игре!", "ok": False, "status": 401}
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Вы не в игре.")
     current_room["players"].remove(request.state.user_id)
     logger.info(f"Пользователь {request.state.user_id} вышел из комнаты {data.room_id}")
-    return {"msg": "Вы вышли из игры!", "ok": True, "status": 200}
+    return JSONResponse({"msg": "Вы вышли из игры!"})
 
 
 @api_app.get("/blackjack/reward", response_class=JSONResponse)
-async def get_blackjack_reward(room_id: str):
+async def get_blackjack_reward(room_id: str) -> JSONResponse:
     if room_id not in blackjack_rooms:
-        return {"msg": "Комната не найдена!", "ok": False, "status": 404}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Комната не найдена.")
     current_room = blackjack_rooms[room_id]
-    return {
-        "msg": "Награда забрана.",
-        "ok": True,
-        "reward": current_room["reward"],
-    }
+    return JSONResponse(
+        {
+            "msg": "Награда забрана.",
+            "reward": current_room["reward"],
+        }
+    )
 
 
 async def fetch(session, url):
@@ -720,7 +767,7 @@ async def fetch(session, url):
 
 
 @api_app.get("/guess/currencies", response_class=JSONResponse)
-async def get_currencies():
+async def get_currencies() -> JSONResponse:
     async with aiohttp.ClientSession(
         headers={
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
@@ -736,18 +783,19 @@ async def get_currencies():
             price = tds[3].get_text()
             value, rate = tds[2].get_text(" ", strip=True).rsplit(" ", maxsplit=1)
             coins.append({"name": value, "symbol": rate, "price": price})
-    return {"msg": "Курсы успешно получены", "ok": True, "coins": coins}
+    return JSONResponse({"msg": "Курсы успешно получены", "coins": coins})
 
 
 @api_app.post("/lottery", response_class=JSONResponse)
-async def get_lottery():
+async def get_lottery() -> JSONResponse:
     end_time, amount = await ltry.get_current_lottery()
-    return {
-        "msg": "Лотерея успешно получена",
-        "ok": True,
-        "lottery": amount,
-        "time": end_time,
-    }
+    return JSONResponse(
+        {
+            "msg": "Лотерея успешно получена",
+            "lottery": amount,
+            "time": end_time,
+        }
+    )
 
 
 def task_mark_guess_games():
