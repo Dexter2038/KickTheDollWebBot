@@ -1,13 +1,14 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
 class MoneyRequest(BaseModel):
-    money: float | int
+    money: float
 
 
 class LotteryBetRequest(BaseModel):
-    reward: float | int
-    bet: float | int
+    reward: float
+    bet: float
 
 
 class TransactionRequest(BaseModel):
@@ -27,18 +28,14 @@ class AmountRequest(BaseModel):
 
 
 class WalletAmountRequest(BaseModel):
-    amount: int | float
+    amount: float
 
 
 class FinishedGameRequest(BaseModel):
     game_type: int
     amount: float
     first_user_id: int
-    second_user_id: int | None
-
-
-class LeaveRequest(BaseModel):
-    room_id: str
+    second_user_id: Optional[int]
 
 
 class WalletRequest(BaseModel):
@@ -58,15 +55,3 @@ class CreateUserRequest(BaseModel):
 class CreateRoomRequest(BaseModel):
     name: str
     reward: int
-
-
-class RoomRequest(BaseModel):
-    room_id: str
-
-
-class RoomRequest(BaseModel):
-    room_id: str
-
-
-class RoomRequest(BaseModel):
-    room_id: str

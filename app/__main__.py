@@ -198,39 +198,39 @@ async def get_wallet_for_deposit(request: Request, data: WalletAmountRequest):
 @api_app.post("/game/money", response_class=JSONResponse)
 async def invest_game_money(request: Request, data: AmountRequest):
     logger.info(
-        f"Пользователь {request.player_id} получил в главное игре: {request.bet}"
+        f"Пользователь {request.state.user_id} получил в главное игре: {data.bet}"
     )
-    await db.invest_game_money(request.player_id, request.bet)
+    await db.invest_game_money(request.state.user_id, data.bet)
     return {"msg": "Деньги успешно вложены", "ok": True, "status": 200}
 
 
 @api_app.post("/wallet/get_balance", response_class=JSONResponse)
 async def get_wallet_balance(request: Request):
-    player = await db.get_user(request.player_id)
+    player = await db.get_user(request.state.user_id)
     if not player:
         return {"msg": "Пользователь не найден", "ok": False, "status": 404}
     wallet = player.wallet_address
     balance = await get_ton_balance(wallet)
-    logger.info(f"Баланс пользователя {request.player_id} получен: {balance}")
+    logger.info(f"Баланс пользователя {request.state.user_id} получен: {balance}")
     return {"msg": "Баланс получен", "ok": True, "status": 200, "balance": balance}
 
 
 @api_app.post("/money/check", response_class=JSONResponse)
 async def check_money_amount(request: Request, data: AmountRequest):
-    player = await db.get_user(request.player_id)
+    player = await db.get_user(request.state.user_id)
     if not player:
         return {"msg": "Пользователь не найден", "ok": False, "status": 404}
-    logger.info(f"У пользователя: {player.money_balance}. Запрошено: {request.bet}")
-    if player.money_balance < request.bet:
+    logger.info(f"У пользователя: {player.money_balance}. Запрошено: {data.bet}")
+    if player.money_balance < data.bet:
         return {"msg": "Недостаточно монет", "ok": False, "status": 402}
     return {"msg": "Монет достаточно", "ok": True, "status": 200}
 
 
 @api_app.post("/player/get", response_class=JSONResponse)
 async def get_player_by_id(request: Request):
-    player = await db.get_user(request.player_id)
+    player = await db.get_user(request.state.user_id)
     if player:
-        logger.info(f"Пользователь {request.player_id} был взят из базы данных")
+        logger.info(f"Пользователь {request.state.user_id} был взят из базы данных")
         return {
             "msg": "Игрок успешно найден",
             "ok": True,
@@ -241,25 +241,27 @@ async def get_player_by_id(request: Request):
             },
         }
     else:
-        logger.warning(f"Была попытка поиска пользователя под id: {request.player_id}")
+        logger.warning(
+            f"Была попытка поиска пользователя под id: {request.state.user_id}"
+        )
         return {"ok": False, "status": 404, "msg": "Игрок не найден"}
 
 
 @api_app.post("/player/post", response_class=JSONResponse)
 async def create_player(request: Request, data: CreateUserRequest):
-    wallet_address = request.wallet_address
-    username = request.username
-    telegram_id = request.telegram_id
+    wallet_address = data.wallet_address
+    username = data.username
+    telegram_id = data.telegram_id
     if await db.create_user(
         telegram_id=telegram_id, username=username, wallet_address=wallet_address
     ):
         logger.info(
-            f"Создан пользователь. ID: {request.telegram_id}. Никнейм: {request.username}. Адрес кошелька: {request.wallet_address}"
+            f"Создан пользователь. ID: {data.telegram_id}. Никнейм: {data.username}. Адрес кошелька: {data.wallet_address}"
         )
         return {"msg": "Игрок успешно создан", "ok": True, "status": 201}
     else:
         logger.error(
-            f"Не удалось создать игрока с данными: ID: {request.telegram_id}. Никнейм: {request.username}. Адрес кошелька: {request.wallet_address}"
+            f"Не удалось создать игрока с данными: ID: {data.telegram_id}. Никнейм: {data.username}. Адрес кошелька: {data.wallet_address}"
         )
         return {"ok": False, "status": 400, "msg": "Ошибка создания игрока"}
 
@@ -269,7 +271,7 @@ async def find_out_reward(request: Request):
     """
     Get amount of reward for every of referal
     """
-    reward = await db.get_referral_reward(request.player_id)
+    reward = await db.get_referral_reward(request.state.user_id)
     return {"msg": "Награда забрана", "ok": True, "status": 200, "reward": reward or 0}
 
 
@@ -278,7 +280,7 @@ async def take_reward(request: Request):
     """
     Get amount of reward for every of referal
     """
-    reward = await db.take_referral_reward(request.player_id)
+    reward = await db.take_referral_reward(request.state.user_id)
     return {"msg": "Награда забрана", "ok": True, "status": 200, "reward": reward}
 
 
@@ -287,8 +289,8 @@ async def get_reward(request: Request):
     """
     Get amount of reward for every of referal
     """
-    reward = await db.take_referral_reward(request.player_id)
-    logger.info(f"Пользователь {request.player_id} получил награду: {reward}")
+    reward = await db.take_referral_reward(request.state.user_id)
+    logger.info(f"Пользователь {request.state.user_id} получил награду: {reward}")
     return {"msg": "Награда забрана", "ok": True, "status": 200, "reward": reward}
 
 
@@ -297,7 +299,7 @@ async def get_referral_count(request: Request):
     """
     Get count of referrals of certain user
     """
-    referral_count = await db.get_referral_count(request.player_id)
+    referral_count = await db.get_referral_count(request.state.user_id)
     return {
         "msg": "Количество рефералов получено",
         "ok": True,
@@ -311,7 +313,7 @@ async def get_invite_link(request: Request):
     """
     Get invitation link for certain user
     """
-    invite_link = await get_invitation_link(request.player_id)
+    invite_link = await get_invitation_link(request.state.user_id)
     return {
         "msg": "Инвайт ссылка получена",
         "ok": True,
@@ -322,24 +324,24 @@ async def get_invite_link(request: Request):
 
 @api_app.post("/transaction", response_class=JSONResponse)
 async def create_transaction(request: Request, data: TransactionRequest):
-    amount = request.amount
-    transaction_type = request.transaction_type
+    amount = data.amount
+    transaction_type = data.transaction_type
 
-    if await db.create_transaction(request.telegram_id, amount, transaction_type):
+    if await db.create_transaction(request.state.user_id, amount, transaction_type):
         logger.info(
-            f"Создана транзакция. ID: {request.telegram_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
+            f"Создана транзакция. ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
         )
         return {"msg": "Транзакция успешно создана", "ok": True, "status": 201}
     else:
         logger.error(
-            f"Не удалось создать транзакцию с данными: ID: {request.telegram_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
+            f"Не удалось создать транзакцию с данными: ID: {request.state.user_id}. Сумма: {amount}. Тип транзакции: {'Вывод' if transaction_type else 'Депозит'}"
         )
         return {"ok": False, "status": 400, "msg": "Ошибка создания транзакции"}
 
 
 @api_app.post("/transactions/get")
 async def get_transactions(request: Request):
-    transactions = await db.get_user_transactions(request.player_id)
+    transactions = await db.get_user_transactions(request.state.user_id)
     return {
         "msg": "Транзакции получены",
         "ok": True,
@@ -350,10 +352,10 @@ async def get_transactions(request: Request):
 
 @api_app.post("/game/finish", response_class=JSONResponse)
 async def create_finished_game(request: Request, data: FinishedGameRequest):
-    game_type = request.game_type
-    amount = request.amount
-    first_user_id = request.first_user_id
-    second_user_id = request.second_user_id
+    game_type = data.game_type
+    amount = data.amount
+    first_user_id = data.first_user_id
+    second_user_id = data.second_user_id
     _hash = generate_room_id()
     if await db.mark_finished_game(
         game_type, amount, first_user_id, second_user_id, _hash
@@ -383,14 +385,14 @@ async def get_dice_rooms():
 @api_app.post("/dice/create", response_class=JSONResponse)
 async def create_dice_room(request: Request, data: CreateRoomRequest):
     new_room_id = generate_room_id()
-    name = request.name
-    reward = request.reward
+    name = data.name
+    reward = data.reward
     dice_rooms[new_room_id] = {
         "name": name,
         "reward": int(reward),
         "going": False,
         "active_player": randint(0, 1),
-        "players": [request.player_id],
+        "players": [request.state.user_id],
         "hands": {
             0: 0,
         },
@@ -398,7 +400,7 @@ async def create_dice_room(request: Request, data: CreateRoomRequest):
         "results": {0: 0},
     }
     logger.info(
-        f"Пользователь {request.player_id} создал комнату кубиков с наградой {reward}$"
+        f"Пользователь {request.state.user_id} создал комнату кубиков с наградой {reward}$"
     )
     return {
         "ok": True,
@@ -410,25 +412,25 @@ async def create_dice_room(request: Request, data: CreateRoomRequest):
 
 @api_app.post("/dice/join", response_class=JSONResponse)
 async def join_dice_room(request: Request, data: RoomRequest):
-    current_room: dict = dice_rooms[request.room_id]
+    current_room: dict = dice_rooms[data.room_id]
     if len(current_room["players"]) > 1:
         logger.info(
-            f"Пользователь {request.player_id} попытался присоединиться к заполненной комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} попытался присоединиться к заполненной комнате {data.room_id}"
         )
         return {"msg": "Комната заполнена.", "ok": False, "status": 403}
     current_room["going"] = True
-    current_room["players"].append(request.player_id)
+    current_room["players"].append(request.state.user_id)
     current_room["hands"][1] = 0
     current_room["count"][1] = 0
     current_room["results"][1] = 0
     logger.info(
-        f"Пользователь {request.player_id} присоединился к комнате {request.room_id}"
+        f"Пользователь {request.state.user_id} присоединился к комнате {data.room_id}"
     )
     return {
         "msg": "Вы успешно присоединились к комнате!",
         "ok": True,
         "status": 200,
-        "room_id": request.room_id,
+        "room_id": data.room_id,
         "name": current_room["name"],
         "reward": current_room["reward"],
     }
@@ -436,13 +438,13 @@ async def join_dice_room(request: Request, data: RoomRequest):
 
 @api_app.post("/dice/roll", response_class=JSONResponse)
 async def roll_dice(request: Request, data: RoomRequest):
-    current_room: dict = dice_rooms[request.room_id]
+    current_room: dict = dice_rooms[data.room_id]
     if current_room["active_player"] != 0:
         logger.info(
-            f"Пользователь {request.player_id} попытался бросить кубики, но не его ход в комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} попытался бросить кубики, но не его ход в комнате {data.room_id}"
         )
         return {"msg": "Не ваш ход.", "ok": False, "status": 401}
-    player_id = current_room["players"].index(request.player_id)
+    player_id = current_room["players"].index(request.state.user_id)
     current_room["count"][player_id] += 1
     dice_value: int = randint(1, 6)
     current_room["hands"][player_id] = dice_value
@@ -455,7 +457,7 @@ async def roll_dice(request: Request, data: RoomRequest):
         elif first < second:
             current_room["results"][1] += 1
     logger.info(
-        f"Пользователь {request.player_id} бросил кубики в комнате {request.room_id}"
+        f"Пользователь {request.state.user_id} бросил кубики в комнате {request.state.user_id}"
     )
     return {"msg": "Вы бросили кубики!", "ok": True, "status": 200, "dice": dice_value}
 
@@ -526,15 +528,15 @@ async def get_dice_updates(player_id: int, room_id: str):
 
 @api_app.post("/blackjack/create", response_class=JSONResponse)
 async def create_blackjack_room(request: Request, data: CreateRoomRequest):
-    name: str = request.name
-    reward: int = request.reward
+    name: str = data.name
+    reward: int = data.reward
     new_room_id: str = generate_room_id()
     blackjack_rooms[new_room_id] = {
         "name": name,
         "reward": int(reward),
         "going": False,
         "active_player": randint(0, 1),
-        "players": [request.player_id],
+        "players": [request.state.user_id],
         "hands": {
             0: [choice(cards_52), choice(cards_52)],
         },
@@ -542,7 +544,7 @@ async def create_blackjack_room(request: Request, data: CreateRoomRequest):
         "results": {0: 0},
     }
     logger.info(
-        f"Пользователь {request.player_id} создал комнату блэкджека с наградой {reward}$"
+        f"Пользователь {request.state.user_id} создал комнату блэкджека с наградой {reward}$"
     )
     return {
         "msg": "Комната успешно создана!",
@@ -554,25 +556,25 @@ async def create_blackjack_room(request: Request, data: CreateRoomRequest):
 
 @api_app.post("/blackjack/join", response_class=JSONResponse)
 async def join_blackjack_room(request: Request, data: RoomRequest):
-    current_room: dict = blackjack_rooms[request.room_id]
+    current_room: dict = blackjack_rooms[data.room_id]
     if len(current_room["players"]) > 1:
         logger.info(
-            f"Пользователь {request.player_id} попытался присоединиться к заполненной комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} попытался присоединиться к заполненной комнате {data.room_id}"
         )
         return {"msg": "Комната заполнена.", "ok": False, "status": 403}
     current_room["going"] = True
-    current_room["players"].append(request.player_id)
+    current_room["players"].append(request.state.user_id)
     current_room["hands"][1] = [choice(cards_52), choice(cards_52)]
     current_room["count"][1] = 0
     current_room["results"][1] = 0
     logger.info(
-        f"Пользователь {request.player_id} присоединился к комнате {request.room_id}"
+        f"Пользователь {request.state.user_id} присоединился к комнате {data.room_id}"
     )
     return {
         "msg": "Вы успешно присоединились к комнате!",
         "ok": True,
         "status": 200,
-        "room_id": request.room_id,
+        "room_id": data.room_id,
         "name": current_room["name"],
         "reward": current_room["reward"],
     }
@@ -580,38 +582,38 @@ async def join_blackjack_room(request: Request, data: RoomRequest):
 
 @api_app.post("/blackjack/pass", response_class=JSONResponse)
 async def pass_card(request: Request, data: RoomRequest):
-    if request.room_id not in blackjack_rooms:
+    if data.room_id not in blackjack_rooms:
         logger.info(
-            f"Пользователь {request.player_id} попытался оставить карту в несуществующей комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} попытался оставить карту в несуществующей комнате {data.room_id}"
         )
         return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room: dict = blackjack_rooms[request.room_id]
-    player_idx: int = current_room["players"].index(request.player_id)
+    current_room: dict = blackjack_rooms[data.room_id]
+    player_idx: int = current_room["players"].index(request.state.user_id)
     if current_room["active_player"] != player_idx:
         logger.info(
-            f"Пользователь {request.player_id} пытался оставить карту, но не его ход в комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} пытался оставить карту, но не его ход в комнате {data.room_id}"
         )
         return {"msg": "Не ваш ход.", "ok": False, "status": 401}
     current_room["active_player"] = int(not player_idx)  # Reverse active player
     current_room["count"][player_idx] += 1
     logger.info(
-        f"Пользователь {request.player_id} оставил карту в комнате {request.room_id}"
+        f"Пользователь {request.state.user_id} оставил карту в комнате {data.room_id}"
     )
     return {"msg": "Вы оставили карты", "ok": True, "status": 200}
 
 
 @api_app.post("/blackjack/take", response_class=JSONResponse)
 async def take_card(request: Request, data: RoomRequest):
-    if request.room_id not in blackjack_rooms:
+    if data.room_id not in blackjack_rooms:
         logger.info(
-            f"Пользователь {request.player_id} попытался взять карту в несуществующей комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} попытался взять карту в несуществующей комнате {data.room_id}"
         )
         return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room: dict = blackjack_rooms[request.room_id]
-    player_idx: int = current_room["players"].index(request.player_id)
+    current_room: dict = blackjack_rooms[data.room_id]
+    player_idx: int = current_room["players"].index(request.state.user_id)
     if current_room["active_player"] != player_idx:
         logger.info(
-            f"Пользователь {request.player_id} пытался взять карту, но не его ход в комнате {request.room_id}"
+            f"Пользователь {request.state.user_id} пытался взять карту, но не его ход в комнате {data.room_id}"
         )
         return {"msg": "Не ваш ход.", "ok": False, "status": 401}
     current_room["hands"][player_idx].append(choice(cards_52))
@@ -625,7 +627,7 @@ async def take_card(request: Request, data: RoomRequest):
         else:
             opponent = False
         logger.info(
-            f"У пользователя {request.player_id} перебор в комнате {request.room_id}"
+            f"У пользователя {request.state.user_id} перебор в комнате {data.room_id}"
         )
         return {
             "msg": "У вас перебор.",
@@ -635,7 +637,7 @@ async def take_card(request: Request, data: RoomRequest):
             "opponent": opponent,
         }
     logger.info(
-        f"Пользователь {request.player_id} взял карту в комнате {request.room_id}"
+        f"Пользователь {request.state.user_id} взял карту в комнате {data.room_id}"
     )
     return {"msg": "Вы взяли карту.", "ok": True, "status": 200, "hand": player_hand}
 
@@ -702,17 +704,17 @@ async def get_blackjack_rooms():
 
 
 @api_app.post("/blackjack/leave", response_class=JSONResponse)
-async def leave_blackjack_room(request: Request, data: LeaveRequest):
-    if request.room_id not in blackjack_rooms:
+async def leave_blackjack_room(request: Request, data: RoomRequest):
+    if data.room_id not in blackjack_rooms:
         logger.info(
-            f"Пользователь {request.player_id} пытался выйти из несуществующей комнаты {request.room_id}"
+            f"Пользователь {request.state.user_id} пытался выйти из несуществующей комнаты {data.room_id}"
         )
         return {"msg": "Комната не найдена!", "ok": False, "status": 404}
-    current_room: dict = blackjack_rooms[request.room_id]
-    if request.player_id not in current_room["players"]:
+    current_room: dict = blackjack_rooms[data.room_id]
+    if request.state.user_id not in current_room["players"]:
         return {"msg": "Ты не в игре!", "ok": False, "status": 401}
-    current_room["players"].remove(request.player_id)
-    logger.info(f"Пользователь {request.player_id} вышел из комнаты {request.room_id}")
+    current_room["players"].remove(request.state.user_id)
+    logger.info(f"Пользователь {request.state.user_id} вышел из комнаты {data.room_id}")
     return {"msg": "Вы вышли из игры!", "ok": True, "status": 200}
 
 
