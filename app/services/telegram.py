@@ -2,14 +2,11 @@ from hashlib import sha256
 from hmac import compare_digest, new
 from urllib import parse
 
-
-bot_token = "TODO: bot token"
-
-bot_username = "TODO: bot username"
+from app.config import settings
 
 
 async def get_invitation_link(telegram_id: int) -> str:
-    return f"https://t.me/{bot_username}?start={telegram_id}"
+    return f"https://t.me/{settings.bot_username}?start={telegram_id}"
 
 
 def is_telegram(init_data: str) -> bool:
@@ -29,7 +26,7 @@ def is_telegram(init_data: str) -> bool:
         f"{k}={parse.unquote(v)}" for k, v in sorted(vals.items())
     )
 
-    secret_key = new(b"WebAppData", bot_token.encode(), sha256).digest()
+    secret_key = new(b"WebAppData", settings.bot_token.encode(), sha256).digest()
     computed_hash = new(secret_key, data_check_string.encode(), sha256).hexdigest()
 
     return compare_digest(computed_hash, hash_received)

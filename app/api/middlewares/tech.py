@@ -9,7 +9,7 @@ from starlette.responses import Response
 from app.db.actions import TechActions
 
 
-class RequiredAuthMiddleware(BaseHTTPMiddleware):
+class TechWorksMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:

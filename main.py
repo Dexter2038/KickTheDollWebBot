@@ -2,26 +2,21 @@ import asyncio
 
 import schedule
 import uvicorn
-from starlette.templating import Jinja2Templates
 
 from app import telegram_bot
-from app.db.actions import mark_guess_games
-
-
-templates: Jinja2Templates = Jinja2Templates(directory="app/templates")
-
-wallets = []
+from app.api import app
+from app.db.actions import clear_game_sessions, mark_guess_games
 
 
 def task_mark_guess_games():
     asyncio.run_coroutine_threadsafe(
-        coro=mark_guess_games, loop=asyncio.get_running_loop()
+        coro=mark_guess_games(), loop=asyncio.get_running_loop()
     )
 
 
-def clear_game_sessions():
+def task_clear_game_sessions():
     asyncio.run_coroutine_threadsafe(
-        coro=clear_game_sessions, loop=asyncio.get_running_loop()
+        coro=clear_game_sessions(), loop=asyncio.get_running_loop()
     )
 
 

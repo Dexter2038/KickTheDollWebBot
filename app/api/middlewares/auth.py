@@ -5,10 +5,10 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette import status
 
-from app.api.jwt import UserAuthManager
+# from app.api.jwt import UserAuthManager
 
 
-class RequiredAuthMiddleware(BaseHTTPMiddleware):
+class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
