@@ -1,13 +1,17 @@
-import json, numpy as np, pathlib, time
+import json
+import pathlib
+import time
+
+import numpy as np
+from loguru import logger
 
 
 class RegistrationPredictor:
-
     def __init__(self, data_path="dates.json", order=3):
         self.data_path = pathlib.Path.cwd().joinpath(data_path)
         self.order = order
         self.x, self.y = self._load_data()
-        print(
+        logger.info(
             f"RegistrationPredictor instance located at {pathlib.Path.cwd().resolve()}"
         )
         self._fit_model()
@@ -39,10 +43,3 @@ class RegistrationPredictor:
         data = self.predict_registration_date(tg_id)
         diff = data - time.time()
         return diff < 12 * 30 * 24 * 60 * 60
-        if diff > 12 * 30 * 24 * 60 * 60:
-            return False
-        else:
-            return True
-
-
-__all__ = ["RegistrationPredictor"]

@@ -17,25 +17,30 @@ from starlette.templating import Jinja2Templates
 
 import app.lottery as ltry
 import app.telegram_bot as telegram_bot
+from app.core.blackjack import (
+    calculate_hand_value,
+    generate_room_id,
+)
 from app.db.actions import Actions
 from app.db.session import AsyncSession, get_session
-from app.tech import is_tech_works
-from app.utils import *
-from app.domain.user import CreateUserRequest
 from app.domain.games import (
-    FinishedGameRequest,
-    CreateRoomRequest,
-    RoomRequest,
     CoinBetRequest,
+    CreateRoomRequest,
+    FinishedGameRequest,
     LotteryBetRequest,
+    RoomRequest,
 )
 from app.domain.transactions import (
+    AmountRequest,
     MoneyRequest,
+    TransactionRequest,
     WalletAmountRequest,
     WalletRequest,
-    AmountRequest,
-    TransactionRequest,
 )
+from app.domain.user import CreateUserRequest
+from app.services.telegram import get_invitation_link
+from app.services.ton import get_ton_balance
+from app.tech import is_tech_works
 
 logger.remove()
 logger.add(

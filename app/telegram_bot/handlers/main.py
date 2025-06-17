@@ -6,7 +6,7 @@ from aiogram3_di import Depends
 from app.db.session import get_session, AsyncSession
 from app.telegram_bot.keyboards import get_main_keyboard
 from app.db.actions import Actions
-from app.utils import RegistrationPredictor
+from app.core.predictor import RegistrationPredictor
 from base64 import b64decode
 
 router = Router(name=__name__)
