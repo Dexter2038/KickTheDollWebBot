@@ -20,7 +20,7 @@ from app.core.blackjack import (
     calculate_hand_value,
     generate_room_id,
 )
-from app.db.actions import Actions, LotteryActions, mark_guess_games
+from app.db.actions import Actions, mark_guess_games
 from app.db.session import AsyncSession, get_session
 from app.domain.games import (
     CoinBetRequest,
@@ -39,7 +39,6 @@ from app.domain.transactions import (
 from app.domain.user import CreateUserRequest
 from app.services.telegram import get_invitation_link
 from app.services.ton import get_ton_balance
-from app.tech import is_tech_works
 
 logger.remove()
 logger.add(
@@ -126,15 +125,6 @@ cards_52: List[str] = [
 templates: Jinja2Templates = Jinja2Templates(directory="app/templates")
 
 wallets = []
-
-
-@api_app.post("/initdata/check", response_class=JSONResponse)
-async def check_init_data() -> JSONResponse:
-    if is_tech_works():
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, detail="Технические работы"
-        )
-    return JSONResponse({"msg": "Инициализация успешна"})
 
 
 @api_app.post("/lottery/topwinners", response_class=JSONResponse)

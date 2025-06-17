@@ -11,7 +11,7 @@ from app.telegram_bot.keyboards import (
 )
 from app.telegram_bot.states import States
 
-from app.tech import start_works, end_tech_works, change_date_tech_works
+from app.db.actions import TechActions
 
 from datetime import UTC, datetime
 
@@ -71,7 +71,7 @@ async def tech_works_check(message: Message, state: FSMContext):
 async def tech_works_confirm(callback: CallbackQuery):
     assert callback.data and callback.message, "Пустое сообщение"
     text = callback.data.split("_")[1]
-    if start_works(text):
+    if TechActions().start_works(text):
         await callback.message.edit_text(
             f"Вы начали технические работы, которые закончатся {text} по часовому поясу 0+",
             reply_markup=get_home_keyboard(),
@@ -94,7 +94,7 @@ async def tech_works_end(callback: CallbackQuery):
 @router.callback_query(F.data == "SureEndTechWorks")
 async def tech_works_end_confirm(callback: CallbackQuery):
     assert callback.message, "Пустое сообщение"
-    if end_tech_works():
+    if TechActions().end_tech_works():
         await callback.message.edit_text(
             text="Вы успешно закончили технические работы.",
             reply_markup=get_home_keyboard(),
@@ -150,7 +150,7 @@ async def tech_works_move_check(message: Message, state: FSMContext):
 async def sure_move_tech_works(callback: CallbackQuery, state: FSMContext):
     assert callback.data and callback.message, "Пустое сообщение"
     _, date = callback.data.split("_")
-    if change_date_tech_works(date):
+    if TechActions().change_date_tech_works(date):
         await callback.message.edit_text(
             text="Вы успешно изменили дату технических работ.",
             reply_markup=get_home_keyboard(),

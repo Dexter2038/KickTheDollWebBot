@@ -11,10 +11,10 @@ from .main import router as main_router
 def get_routers() -> Router:
     """
     Returns a Router instance that includes all routers from the application.
-    
-    The returned Router instance is initialized with the current module name and 
+
+    The returned Router instance is initialized with the current module name and
     includes the main, users, balance, lottery, referrals, history, and tech routers.
-    
+
     Returns:
         Router: A Router instance that includes all routers from the application.
     """
