@@ -4,7 +4,6 @@ from random import choice, randint
 from typing import Annotated, List
 
 import aiohttp
-from attr import s
 import schedule
 import uvicorn
 from bs4 import BeautifulSoup
@@ -20,9 +19,23 @@ import app.lottery as ltry
 import app.telegram_bot as telegram_bot
 from app.db.actions import Actions
 from app.db.session import AsyncSession, get_session
-from app.request_models import *
 from app.tech import is_tech_works
 from app.utils import *
+from app.domain.user import CreateUserRequest
+from app.domain.games import (
+    FinishedGameRequest,
+    CreateRoomRequest,
+    RoomRequest,
+    CoinBetRequest,
+    LotteryBetRequest,
+)
+from app.domain.transactions import (
+    MoneyRequest,
+    WalletAmountRequest,
+    WalletRequest,
+    AmountRequest,
+    TransactionRequest,
+)
 
 logger.remove()
 logger.add(
@@ -52,6 +65,7 @@ class SPAStaticFiles(StaticFiles):
 
 
 api_app = FastAPI(title="API App", docs_url=None, redoc_url=None)
+
 app.mount("/api", api_app)
 app.mount("/", SPAStaticFiles(directory="app/templates", html=True), name="index")
 
@@ -199,9 +213,11 @@ async def make_game_params(
 
 @api_app.post("/game/add/money", response_class=JSONResponse)
 async def add_money(
-    request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+    request: Request,
+    data: MoneyRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
-    await Actions(session).add_user_money_balance(request.state.user_id)
+    await Actions(session).add_user_money_balance(request.state.user_id, data.money)
     return JSONResponse({"msg": "Деньги успешно добавлены"})
 
 
