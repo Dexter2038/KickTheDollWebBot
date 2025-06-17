@@ -9,6 +9,8 @@ from loguru import logger
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_session
+
 from .models import (
     Bets,
     FinishedGame,
@@ -18,12 +20,54 @@ from .models import (
     Users,
 )
 
+end_time = datetime.now(UTC)
+
+
+class LotteryActions:
+    def is_current_lottery(self) -> bool:
+        return end_time > datetime.now(UTC)
+
+    def create_lottery(self, date: str) -> bool:
+        global end_time
+        try:
+            end_time = datetime.strptime(date, "%d:%m:%Y.%H:%M:%S").astimezone(UTC)
+        except ValueError:
+            return False
+        return True
+
+    def close_lottery(self) -> bool:
+        global end_time
+        end_time = datetime.now(UTC)
+        return True
+
+    def change_date_lottery(self, date: str) -> bool:
+        global end_time
+        save_time = end_time
+        try:
+            end_time = datetime.strptime(date, "%d:%m:%Y.%H:%M:%S").astimezone(UTC)
+        except ValueError:
+            end_time = save_time
+            return False
+        return True
+
 
 class Actions:
     session: AsyncSession
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_top_winners(self) -> List[Tuple[str, float, int]]:
+        return await self.get_top_lottery_transactions()
+
+    async def make_deposit(self, user_id: int, multiplier: float, amount: float):
+        await self.insert_lottery_transaction(user_id, multiplier, amount)
+
+    async def get_current_lottery(self) -> Tuple[datetime, float]:
+        global end_time
+        if LotteryActions().is_current_lottery():
+            return end_time, await self.get_lottery_transactions_sum()
+        return datetime.now(UTC), 0
 
     async def insert_lottery_transaction(
         self, user_id: int, multiplier: float, amount: float
@@ -51,16 +95,6 @@ class Actions:
             )
         else:
             await self.minus_user_money(user_id, amount)
-
-    async def clear_game_sessions(self):
-        """
-        Clear all game sessions
-        """
-        statement = update(Users).values(
-            last_visit_to_bot=datetime.now(UTC) - timedelta(hours=5),
-            bonuses_to_bot=3,
-        )
-        await self.session.execute(statement)
 
     async def get_username(self, user_id: int) -> str:
         """
@@ -804,7 +838,7 @@ class Actions:
         return True
 
 
-async def fetch(session, url):
+async def fetch(session: aiohttp.ClientSession, url: str) -> str:
     async with session.get(url) as response:
         return await response.text()
 
@@ -819,29 +853,37 @@ async def mark_guess_games():
         soup = BeautifulSoup(html, "html.parser")
         table = soup.find("tbody")
         trs = table.find_all("tr", limit=20)
-        coins = []
+        coins = dict()
         for tr in trs:
             tds = tr.find_all("td")
             price = tds[3].get_text()
             value, _ = tds[2].get_text(" ", strip=True).rsplit(" ", maxsplit=1)
-            coins.append({"name": value, "price": price})
-    async with new_session() as session:
-        # WHERE bets.supposed_at <= datetime.utcnow()
-        # MAKE add_user_money(user_id, amount) or minus_user_money(user_id, amount)
-        # DEPENDS on bets.way
-        # IF coints[bets.coin]["prize"] < bets.start_value
-        query = select(Bets).where(Bets.supposed_at <= datetime.utcnow())
+            coins[value] = price
+    async for session in get_session():
+        query = select(Bets).where(Bets.supposed_at <= datetime.now(UTC))
         result = await session.execute(query)
         bets = result.scalars().all()
+        actions = Actions(session)
         for bet in bets:
-            if coins[bet.coin]["prize"] < bet.start_value:
-                # TODO:check way
+            if coins[bet.coin] < bet.start_value:
                 if bet.way == -1:
-                    await add_user_money(bet.user_id, bet.amount)
+                    await actions.add_user_money(bet.user_id, bet.amount)
                 else:
-                    await minus_user_money(bet.user_id, bet.amount)
+                    await actions.minus_user_money(bet.user_id, bet.amount)
             else:
                 if bet.way == -1:
-                    await minus_user_money(bet.user_id, bet.amount)
+                    await actions.minus_user_money(bet.user_id, bet.amount)
                 else:
-                    await add_user_money(bet.user_id, bet.amount)
+                    await actions.add_user_money(bet.user_id, bet.amount)
+
+
+async def clear_game_sessions():
+    """
+    Clear all game sessions
+    """
+    async for session in get_session():
+        statement = update(Users).values(
+            last_visit_to_bot=datetime.now(UTC) - timedelta(hours=5),
+            bonuses_to_bot=3,
+        )
+        await session.execute(statement)

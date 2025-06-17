@@ -15,13 +15,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-import app.lottery as ltry
 import app.telegram_bot as telegram_bot
 from app.core.blackjack import (
     calculate_hand_value,
     generate_room_id,
 )
-from app.db.actions import Actions
+from app.db.actions import Actions, LotteryActions, mark_guess_games
 from app.db.session import AsyncSession, get_session
 from app.domain.games import (
     CoinBetRequest,
@@ -142,7 +141,7 @@ async def check_init_data() -> JSONResponse:
 async def get_top_lottery_winners(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
-    winners = await ltry.get_top_winners(session)
+    winners = await Actions(session).get_top_winners()
     return JSONResponse(
         {
             "msg": "Топ победители лотереи получены успешно",
@@ -175,7 +174,7 @@ async def make_lottery_deposit(
     data: LotteryBetRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
-    await ltry.make_deposit(session, request.state.user_id, data.reward, data.bet)
+    await Actions(session).make_deposit(request.state.user_id, data.reward, data.bet)
     return JSONResponse({"msg": "Ставка успешно принята"})
 
 
@@ -309,7 +308,6 @@ async def get_player_by_id(
 
 @api_app.post("/player/post", response_class=JSONResponse)
 async def create_player(
-    request: Request,
     data: CreateUserRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
@@ -435,7 +433,6 @@ async def get_transactions(
 
 @api_app.post("/game/finish", response_class=JSONResponse)
 async def create_finished_game(
-    request: Request,
     data: FinishedGameRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
@@ -865,7 +862,7 @@ async def get_currencies() -> JSONResponse:
 async def get_lottery(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
-    end_time, amount = await ltry.get_current_lottery(session)
+    end_time, amount = await Actions(session).get_current_lottery()
     return JSONResponse(
         {
             "msg": "Лотерея успешно получена",
@@ -877,13 +874,13 @@ async def get_lottery(
 
 def task_mark_guess_games():
     asyncio.run_coroutine_threadsafe(
-        coro=Actions(None).mark_guess_games(), loop=asyncio.get_running_loop()
+        coro=mark_guess_games, loop=asyncio.get_running_loop()
     )
 
 
 def clear_game_sessions():
     asyncio.run_coroutine_threadsafe(
-        coro=Actions(None).clear_game_sessions(), loop=asyncio.get_running_loop()
+        coro=clear_game_sessions, loop=asyncio.get_running_loop()
     )
 
 

@@ -8,12 +8,7 @@ from aiogram3_di import Depends
 
 from app.db.actions import Actions
 from app.db.session import AsyncSession, get_session
-from app.lottery import (
-    change_date_lottery,
-    close_lottery,
-    create_lottery,
-    is_current_lottery,
-)
+from app.db.actions import LotteryActions
 from app.telegram_bot.keyboards import (
     get_create_lottery_keyboard,
     get_home_keyboard,
@@ -50,7 +45,7 @@ async def history_main(
 @router.callback_query(F.data == "ManageLottery")
 async def manage_lottery(callback: CallbackQuery):
     assert callback.data and callback.message, "Пустое сообщение"
-    if is_current_lottery():
+    if LotteryActions().is_current_lottery():
         await callback.message.edit_text(
             "Управление розыгрышем", reply_markup=get_manage_lottery_keyboard()
         )
@@ -106,7 +101,7 @@ async def create_lottery_check(message: Message, state: FSMContext):
 async def create_lottery_bot(callback: CallbackQuery, state: FSMContext):
     assert callback.data and callback.message, "Пустое сообщение"
     _, date = callback.data.split("_")
-    if create_lottery(date):
+    if LotteryActions().create_lottery(date):
         await callback.message.edit_text(
             text="Вы успешно изменили дату розыгрыша.", reply_markup=get_home_keyboard()
         )
@@ -162,7 +157,7 @@ async def change_lottery_date_check(message: Message, state: FSMContext):
 async def move_lottery(callback: CallbackQuery, state: FSMContext):
     assert callback.data and callback.message, "Пустое сообщение"
     _, date = callback.data.split("_")
-    if change_date_lottery(date):
+    if LotteryActions().change_date_lottery(date):
         await callback.message.edit_text(
             text="Вы успешно изменили дату розыгрыша.", reply_markup=get_home_keyboard()
         )
@@ -185,10 +180,9 @@ async def close_lottery_suggest(callback: CallbackQuery, state: FSMContext):
 async def sure_close_lottery(
     callback: CallbackQuery,
     state: FSMContext,
-    session: Annotated[AsyncSession, Depends(get_session, use_cache=False)],
 ):
     assert callback.data and callback.message, "Пустое сообщение"
-    if close_lottery():
+    if LotteryActions().close_lottery():
         await callback.message.edit_text(
             text="Вы успешно завершили розыгрыш. Награды начислены.",
             reply_markup=get_home_keyboard(),
