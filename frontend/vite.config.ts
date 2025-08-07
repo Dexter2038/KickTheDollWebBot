@@ -17,4 +17,9 @@ export default defineConfig({
       allowedHeaders: ["Content-Type", "application/json"],
     },
   },
+  build: {
+    outDir: "../app/assets/",
+    assetsDir: "./",
+    emptyOutDir: true,
+  },
 });
