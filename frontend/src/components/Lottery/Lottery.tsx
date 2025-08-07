@@ -3,7 +3,6 @@ import "./Lottery.css";
 import { fetchLottery, fetchTopWinners, Winner } from "./Utils";
 import NavBar from "../NavBar";
 import { toast } from "react-toastify";
-import getLaunchParams from "../RetrieveLaunchParams";
 import NumberInput from "../NumberInput";
 import axios from "axios";
 
@@ -13,7 +12,6 @@ const Lottery: React.FC = () => {
     const [isSpinning, setIsSpinning] = useState(false);
     const pointerRef = useRef<HTMLDivElement>(null);
     const lightsRef = useRef<HTMLDivElement[]>([]);
-    const { initDataRaw, initData } = getLaunchParams();
     const [currentLottery, setCurrentLottery] = useState<number | null>(null);
     const [endTime, setEndTime] = useState<Date | null>(null);
     const [remainStringTime, setRemainStringTime] = useState<string>("");
@@ -58,7 +56,7 @@ const Lottery: React.FC = () => {
                 "x1.5",
             ].sort(() => 0.5 - Math.random())
         );
-        fetchLottery(initDataRaw).then((data) => {
+        fetchLottery().then((data) => {
             if (data.currentValue !== -1 && data.endTime !== "") {
                 setCurrentLottery(data.currentValue);
                 setEndTime(new Date(data.endTime));
@@ -68,7 +66,7 @@ const Lottery: React.FC = () => {
                 );
             }
         });
-        fetchTopWinners(initDataRaw).then((data) => {
+        fetchTopWinners().then((data) => {
             setTopWinners(data.winners);
         });
         const mockTopWinners: Winner[] = [
@@ -144,7 +142,7 @@ const Lottery: React.FC = () => {
     }, [endTime]);
 
     useEffect(() => {
-        let x: NodeJS.Timeout;
+        let x: number;
         if (endTime && endTime > new Date()) {
             x = setInterval(updateTime, 1000);
         }
@@ -174,8 +172,6 @@ const Lottery: React.FC = () => {
     const deposit = async () => {
         if (bet <= 0) return;
         const { data } = await axios.post("/api/money/check", {
-            initData: initDataRaw,
-            player_id: initData?.user?.id,
             bet: bet,
         });
         if (!data.ok) {
@@ -198,8 +194,6 @@ const Lottery: React.FC = () => {
             const index = Math.floor(((newDeg % 360) + 15) / 36);
             const prize = Number(inputSegments[index].replace("x", ""));
             axios.post("/api/lottery/deposit", {
-                player_id: initData?.user?.id,
-                initData: initDataRaw,
                 reward: prize,
                 bet: bet,
             });

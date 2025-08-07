@@ -2,14 +2,12 @@ import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import getLaunchParams from "../RetrieveLaunchParams";
 import axios from "axios";
 
 const RegisterPage: React.FC = (): JSX.Element => {
     const [registered, setRegistered] = useState<boolean>(false);
     const tonAddress = useTonAddress(false);
     const [tonConnectUI] = useTonConnectUI();
-    const { initDataRaw } = getLaunchParams();
     const navigate = useNavigate();
 
     tonConnectUI.onStatusChange((wallet) => {
@@ -23,7 +21,6 @@ const RegisterPage: React.FC = (): JSX.Element => {
             axios
                 .post("/api/player/post", {
                     wallet_address: tonAddress,
-                    initData: initDataRaw,
                 })
                 .then(({ data }) => {
                     if (data.ok) {

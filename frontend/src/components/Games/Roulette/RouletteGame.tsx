@@ -11,7 +11,6 @@ import blackChip from "../../../assets/images/chips/black-chip.png";
 import cyanChip from "../../../assets/images/chips/cyan-chip.png";
 import NavBar from "../../NavBar";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import axios from "axios";
 
 const API = {
@@ -75,7 +74,6 @@ const RouletteGame: React.FC = () => {
     const [activeChip, setActiveChip] = useState<string>(
         Object.keys(chipsMap)[0]
     );
-    const { initDataRaw, initData } = getLaunchParams();
 
     const [isRouletteWheelSpinning, setIsRouletteWheelSpinning] =
         useState<boolean>(false);
@@ -119,8 +117,6 @@ const RouletteGame: React.FC = () => {
 
     const handleDoSpin = async () => {
         const { data } = await axios.post("/api/money/check", {
-            player_id: initData?.user?.id,
-            initData: initDataRaw,
             bet: totalBet,
         });
         if (!data.ok) {
@@ -356,18 +352,14 @@ const RouletteGame: React.FC = () => {
                 } `
             );
             axios.post("/api/game/finish", {
-                first_user_id: initData?.user?.id,
                 second_user_id: null,
-                initData: initDataRaw,
                 amount: -(totalBet - winAmount),
                 game_type: 6,
             });
         } else if (totalBet === winAmount) {
             toast.success(`Вы ничего не потеряли`);
             axios.post("/api/game/finish", {
-                first_user_id: initData?.user?.id,
                 second_user_id: null,
-                initData: initDataRaw,
                 amount: 0,
                 game_type: 6,
             });
@@ -388,9 +380,7 @@ const RouletteGame: React.FC = () => {
                 }`
             );
             axios.post("/api/game/finish", {
-                first_user_id: initData?.user?.id,
                 second_user_id: null,
-                initData: initDataRaw,
                 amount: winAmount - totalBet,
                 game_type: 6,
             });

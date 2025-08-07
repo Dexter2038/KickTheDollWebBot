@@ -20,12 +20,8 @@ interface WinnersData {
  *
  * @return {Promise<LotteryData>} A promise that resolves when the data is fetched and updated.
  */
-const fetchLottery = async (
-    initDataRaw: string | undefined
-): Promise<LotteryData> => {
-    const { data } = await axios.post("/api/lottery", {
-        initData: initDataRaw,
-    });
+const fetchLottery = async (): Promise<LotteryData> => {
+    const { data } = await axios.post("/api/lottery");
     if (data.ok) {
         return { currentValue: data.lottery, endTime: data.time };
     } else {
@@ -33,12 +29,8 @@ const fetchLottery = async (
     }
 };
 
-const fetchTopWinners = async (
-    initDataRaw: string | undefined
-): Promise<WinnersData> => {
-    const { data } = await axios.post("/api/lottery/topwinners", {
-        initData: initDataRaw,
-    });
+const fetchTopWinners = async (): Promise<WinnersData> => {
+    const { data } = await axios.post("/api/lottery/topwinners");
     if (data.ok) {
         return { winners: data.winners };
     } else {

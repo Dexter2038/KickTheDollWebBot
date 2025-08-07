@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import "./MinesGame.css";
 import NavBar from "../../NavBar";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import NumberInput from "../../NumberInput";
 import axios from "axios";
 
@@ -58,35 +57,30 @@ const generateBoard = (rows: number, cols: number, mines: number) => {
 
 const Mines: React.FC = () => {
     const [board, setBoard] = useState<Cell[][]>([]);
-    const { initDataRaw, initData } = getLaunchParams();
     const [difficulty, setDifficulty] = useState<"лёгкая" | "сложная" | null>(
         null
     );
     const [gameOver, setGameOver] = useState<boolean>(false);
     const [bet, setBet] = useState<number>(0);
 
-    const startGame = useCallback(
-        async (difficulty: "лёгкая" | "сложная") => {
-            const { rows, cols, mines } = difficulties[difficulty];
-            if (bet <= 0) {
-                toast.error("Введите ставку");
-                return;
-            }
-            const { data } = await axios.post("/api/money/check", {
-                initData: initDataRaw,
-                player_id: initData?.user?.id,
-                bet,
-            });
-            if (!data.ok) {
-                toast.error("Недостаточно монет");
-                return;
-            }
-            toast.info("Игра началась");
-            setBoard(generateBoard(rows, cols, mines));
-            setDifficulty(difficulty);
-        },
-        [initData, initDataRaw, bet]
-    );
+    const startGame = useCallback(async (difficulty: "лёгкая" | "сложная") => {
+        const { rows, cols, mines } = difficulties[difficulty];
+        if (bet <= 0) {
+            toast.error("Введите ставку");
+            return;
+        }
+        const { data } = await axios.post("/api/money/check", {
+            bet,
+        });
+        if (!data.ok) {
+            toast.error("Недостаточно монет");
+            return;
+        }
+        toast.info("Игра началась");
+        setBoard(generateBoard(rows, cols, mines));
+        setDifficulty(difficulty);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleClick = (row: number, col: number) => {
         if (
@@ -104,9 +98,7 @@ const Mines: React.FC = () => {
             toast.warn("Вы проиграли");
             axios.post("/api/game/finish", {
                 game_type: 3,
-                first_user_id: initData?.user?.id,
                 second_user_id: null,
-                initData: initDataRaw,
                 amount: -bet,
             });
             setGameOver(true);
@@ -148,9 +140,7 @@ const Mines: React.FC = () => {
             toast.success("Вы выиграли!");
             axios.post("/api/game/finish", {
                 game_type: 3,
-                first_user_id: initData?.user?.id,
                 second_user_id: null,
-                initData: initDataRaw,
                 amount: bet,
             });
         }

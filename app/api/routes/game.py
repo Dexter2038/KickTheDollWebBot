@@ -57,12 +57,13 @@ async def invest_game_money(
 
 @router.post("/finish", response_class=JSONResponse)
 async def create_finished_game(
+    request: Request,
     data: FinishedGameRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     game_type = data.game_type
     amount = data.amount
-    first_user_id = data.first_user_id
+    first_user_id = request.state.user_id
     second_user_id = data.second_user_id
     _hash = generate_room_id()
     if not await Actions(session).mark_finished_game(

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import "./GuessGame.css";
 import NavBar from "../../NavBar";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import NumberInput from "../../NumberInput";
 import axios from "axios";
 
@@ -14,7 +13,6 @@ interface Coin {
 }
 
 const GuessPage: React.FC = () => {
-    const { initDataRaw, initData } = getLaunchParams();
     const [coins, setCoins] = useState<Coin[]>([]);
     const [showClass, setShowClass] = useState<boolean>(false);
     const [showPopup, setShowPopup] = useState<boolean>(false);
@@ -64,8 +62,6 @@ const GuessPage: React.FC = () => {
             return;
         }
         let { data } = await axios.post("/api/money/check", {
-            initData: initDataRaw,
-            player_id: initData?.user?.id,
             bet,
         });
         if (!data.ok) {
@@ -75,8 +71,6 @@ const GuessPage: React.FC = () => {
 
         data = (
             await axios.post("/api/money/bet", {
-                initData: initDataRaw,
-                player_id: initData?.user?.id,
                 bet,
                 coin_name: coins[curCoin].name,
                 time,

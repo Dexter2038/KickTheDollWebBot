@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import NavBar from "../../NavBar";
 import NumberInput from "../../NumberInput";
 import axios from "axios";
@@ -18,7 +17,6 @@ const BlackjackPage: React.FC = (): JSX.Element => {
     const [reward, setReward] = useState<number>(0);
     const [name, setName] = useState<string>("");
     const navigate = useNavigate();
-    const { initDataRaw, initData } = getLaunchParams();
 
     useEffect(() => {
         const fetchRooms = async () => {
@@ -28,7 +26,7 @@ const BlackjackPage: React.FC = (): JSX.Element => {
             }
         };
         fetchRooms();
-    }, [initDataRaw, initData?.user?.id]);
+    }, []);
 
     const createBlackjack = async () => {
         if (!name || !reward) {
@@ -37,8 +35,6 @@ const BlackjackPage: React.FC = (): JSX.Element => {
         }
 
         const { data } = await axios.post("/api/blackjack/create", {
-            initData: initDataRaw,
-            player_id: initData?.user?.id,
             name: name,
             reward: reward,
         });
@@ -56,8 +52,6 @@ const BlackjackPage: React.FC = (): JSX.Element => {
 
     const joinBlackjack = async (room_id: string) => {
         const { data } = await axios.post(`/api/blackjack/join`, {
-            initData: initDataRaw,
-            player_id: initData?.user?.id,
             room_id,
         });
 

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import NavBar from "../NavBar";
-import getLaunchParams from "../RetrieveLaunchParams";
 import axios from "axios";
 
 function formatLargeNumber(num: number) {
@@ -15,7 +14,6 @@ function formatLargeNumber(num: number) {
 }
 
 const Game: React.FC = () => {
-    const { initDataRaw, initData } = getLaunchParams();
     const [balance, setBalance] = useState<number>(0);
     const [bonus, setBonus] = useState<boolean>(false);
     const [money, setMoney] = useState<number>(0);
@@ -23,19 +21,14 @@ const Game: React.FC = () => {
 
     useEffect(() => {
         const fetchGameParams = () => {
-            axios
-                .post("/api/game/params/get", {
-                    player_id: initData?.user?.id,
-                    initData: initDataRaw,
-                })
-                .then((response) => {
-                    const data = response.data;
-                    if (data.ok) {
-                        setBalance(data.params.money);
-                        setBonus(data.params.bonus);
-                        setNewVisit(data.params.last_visit);
-                    }
-                });
+            axios.post("/api/game/params/get").then((response) => {
+                const data = response.data;
+                if (data.ok) {
+                    setBalance(data.params.money);
+                    setBonus(data.params.bonus);
+                    setNewVisit(data.params.last_visit);
+                }
+            });
         };
         fetchGameParams();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,11 +49,9 @@ const Game: React.FC = () => {
     }, []);
     const fetchMoney = useCallback(() => {
         axios.post("/api/game/money", {
-            player_id: initData?.user?.id,
             bet: money,
-            initData: initDataRaw,
         });
-    }, [initData, initDataRaw, money]);
+    }, []);
 
     useEffect(() => {
         window.addEventListener("message", updateMoney);

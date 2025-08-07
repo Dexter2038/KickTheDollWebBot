@@ -8,7 +8,6 @@ import {
 import { fetchData, fetchHistory, fetchTonBalance } from "./Utils";
 import { toast } from "react-toastify";
 import NavBar from "../NavBar";
-import getLaunchParams from "../RetrieveLaunchParams";
 import NumberInput from "../NumberInput";
 import axios from "axios";
 
@@ -42,7 +41,6 @@ function formatLargeNumber(num: number) {
  * @return {JSX.Element} The JSX element representing the balance page.
  */
 const Balance: React.FC = (): JSX.Element => {
-    const { initDataRaw, initData } = getLaunchParams();
     const [depositPopup, setDepositPopup] = useState<boolean>(false);
     const [historyPopup, setHistoryPopup] = useState<boolean>(false);
     const [moneyBalance, setMoneyBalance] = useState<number>(0);
@@ -58,8 +56,8 @@ const Balance: React.FC = (): JSX.Element => {
         async function main() {
             try {
                 const [balance, transactions] = await Promise.all([
-                    fetchData(initDataRaw, initData?.user?.id),
-                    fetchHistory(initDataRaw, initData?.user?.id),
+                    fetchData(),
+                    fetchHistory(),
                 ]);
 
                 if (balance === -1) {
@@ -83,7 +81,7 @@ const Balance: React.FC = (): JSX.Element => {
 
     useEffect(() => {
         if (tonWallet) {
-            fetchTonBalance(initDataRaw, initData?.user?.id).then((balance) => {
+            fetchTonBalance().then((balance) => {
                 if (balance == -1) {
                     toast.error("Перепривяжите TON кошелёк");
                 } else setTonBalance(balance);
@@ -101,8 +99,6 @@ const Balance: React.FC = (): JSX.Element => {
     useEffect(() => {
         const updateWallet = async () => {
             const { data } = await axios.post("/api/wallet/connect", {
-                initData: initDataRaw,
-                player_id: initData?.user?.id,
                 wallet_address: tonAddress,
             });
             if (!data.ok) {
@@ -138,7 +134,6 @@ const Balance: React.FC = (): JSX.Element => {
             }
             const { data } = await axios.post("/api/wallet/deposit", {
                 amount: depositNumber,
-                initData: initDataRaw,
             });
             if (!data.ok) {
                 toast.error("Выполнить депозит в данный момент невозможно");
@@ -160,8 +155,6 @@ const Balance: React.FC = (): JSX.Element => {
                     .then(async () => {
                         await axios.post("/api/balance/deposit", {
                             amount: depositNumber,
-                            initData: initDataRaw,
-                            player_id: initData?.user?.id,
                         });
                     })
                     .catch((e: TonConnectError) => {
@@ -322,11 +315,7 @@ const Balance: React.FC = (): JSX.Element => {
                         className="cell btn-money inter"
                         onClick={async () => {
                             const { data } = await axios.post(
-                                "/api/wallet/disconnect",
-                                {
-                                    player_id: initData?.user?.id,
-                                    initData: initDataRaw,
-                                }
+                                "/api/wallet/disconnect"
                             );
 
                             if (data.ok) {

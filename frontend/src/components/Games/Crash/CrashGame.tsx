@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import "./CrashGame.css";
 import { toast } from "react-toastify";
 import NavBar from "../../NavBar";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import NumberInput from "../../NumberInput";
 import axios from "axios";
 
@@ -25,12 +24,11 @@ const CrashGame: React.FC = () => {
     const [graphPoints, setGraphPoints] = useState<
         Array<{ x: number; y: number }>
     >([]);
-    const { initDataRaw, initData } = getLaunchParams();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [crashMultiplier, setCrashMultiplier] = useState<number | null>(null);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: number;
 
         if (isGameActive) {
             // Генерация случайного значения для краша
@@ -78,9 +76,7 @@ const CrashGame: React.FC = () => {
         );
         axios.post("/api/game/finish", {
             game_type: 4,
-            first_user_id: initData?.user?.id,
             second_user_id: null,
-            initData: initDataRaw,
             amount: -reward,
         });
     };
@@ -92,8 +88,6 @@ const CrashGame: React.FC = () => {
         }
         try {
             const { data } = await axios.post("/api/money/check", {
-                player_id: initData?.user?.id,
-                initData: initDataRaw,
                 bet: reward,
             });
             if (!data.ok) {
@@ -120,9 +114,7 @@ const CrashGame: React.FC = () => {
         toast.success(`Вы вывели с множителем ${multiplier.toPrecision(3)}x!`);
         axios.post("/api/game/finish", {
             game_type: 4,
-            first_user_id: initData?.user?.id,
             second_user_id: null,
-            initData: initDataRaw,
             amount: reward * multiplier - reward,
         });
 

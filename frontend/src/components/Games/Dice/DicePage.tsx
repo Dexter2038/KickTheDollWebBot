@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import NavBar from "../../NavBar";
 import NumberInput from "../../NumberInput";
 import axios from "axios";
@@ -15,7 +14,6 @@ interface DiceRoom {
 const DicePage = (): JSX.Element => {
     const [rooms, setRooms] = useState<Array<DiceRoom>>([]);
     const [createPopup, setCreatePopup] = useState<boolean>(false);
-    const { initDataRaw, initData } = getLaunchParams();
     const [name, setName] = useState<string>("");
     const [reward, setReward] = useState<number>(0);
     const navigate = useNavigate();
@@ -28,7 +26,7 @@ const DicePage = (): JSX.Element => {
         };
         fetchRooms();
         return () => {};
-    }, [initDataRaw, initData?.user?.id]);
+    }, []);
 
     const createDice = (): void => {
         if (!name || !reward) {
@@ -37,8 +35,6 @@ const DicePage = (): JSX.Element => {
         }
         const fetchCreate = async () => {
             const { data } = await axios.post("/api/dice/create", {
-                initData: initDataRaw,
-                player_id: initData?.user?.id,
                 name,
                 reward,
             });
@@ -125,8 +121,6 @@ const DicePage = (): JSX.Element => {
 
     const joinDice = async (room_id: string) => {
         const { data } = await axios.post("/api/dice/join", {
-            initData: initDataRaw,
-            player_id: initData?.user?.id,
             room_id,
         });
 

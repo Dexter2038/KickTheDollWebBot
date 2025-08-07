@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import axios from "axios";
 
 interface DiceUpdatesResponse {
@@ -24,8 +23,6 @@ interface DiceUpdatesResponse {
 const DiceGame: React.FC = () => {
     const [searchParams] = useSearchParams();
     const roomId = searchParams.get("room_id");
-    const { initDataRaw, initData } = getLaunchParams();
-    const playerId = initData?.user?.id;
     const [selfSteps, setSelfSteps] = useState<number>(0);
     const [otherSteps, setOtherSteps] = useState<number>(0);
     const [player1Result, setPlayer1Result] = useState<number>(0);
@@ -194,13 +191,7 @@ const DiceGame: React.FC = () => {
 
     const getDiceUpdates = useCallback(async () => {
         const { data }: { data: DiceUpdatesResponse } = await axios.get(
-            `/api/dice/updates`,
-            {
-                params: {
-                    player_id: playerId,
-                    room_id: roomId,
-                },
-            }
+            `/api/dice/updates?room_id=${roomId}`
         );
         if (data.ok) {
             if (data.msg !== "Обновления успешно получены.") {
@@ -223,7 +214,6 @@ const DiceGame: React.FC = () => {
         }
     }, [
         otherSteps,
-        playerId,
         roomId,
         selfSteps,
         rollDiceOpponent,
@@ -233,8 +223,6 @@ const DiceGame: React.FC = () => {
 
     const roll = async () => {
         const { data } = await axios.post("/api/dice/roll", {
-            initData: initDataRaw,
-            player_id: playerId,
             room_id: roomId,
         });
         if (data.ok) {

@@ -1,4 +1,4 @@
-import getLaunchParams from "../RetrieveLaunchParams";
+import { retrieveLaunchParams } from "@telegram-apps/sdk";
 
 const PlatformSurenessProvider = ({
     children,
@@ -6,7 +6,7 @@ const PlatformSurenessProvider = ({
     children: React.ReactNode;
 }) => {
     try {
-        const { platform } = getLaunchParams();
+        const { platform } = retrieveLaunchParams();
         if (
             platform === "android" ||
             platform === "ios" ||

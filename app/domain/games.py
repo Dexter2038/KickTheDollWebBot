@@ -27,5 +27,4 @@ class RoomRequest(BaseModel):
 class FinishedGameRequest(BaseModel):
     game_type: int
     amount: float
-    first_user_id: int
     second_user_id: Optional[int]

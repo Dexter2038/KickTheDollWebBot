@@ -4,14 +4,8 @@ import axios from "axios";
  *
  * @return {Promise<number>}
  */
-const fetchData = async (
-    initDataRaw: string | undefined,
-    userId: number | undefined
-): Promise<number> => {
-    const { data } = await axios.post("/api/player/get", {
-        initData: initDataRaw,
-        player_id: userId,
-    });
+const fetchData = async (): Promise<number> => {
+    const { data } = await axios.post("/api/player/get");
     if (data.ok) {
         return data.player.money_balance;
     } else {
@@ -33,14 +27,8 @@ interface Transaction {
  *
  * @return {Promise<Transaction[]>}
  */
-const fetchHistory = async (
-    initDataRaw: string | undefined,
-    userId: number | undefined
-): Promise<Transaction[]> => {
-    const { data } = await axios.post("/api/transactions/get", {
-        initData: initDataRaw,
-        player_id: userId,
-    });
+const fetchHistory = async (): Promise<Transaction[]> => {
+    const { data } = await axios.post("/api/transactions/get");
     if (data.ok) {
         return data.data;
     } else {
@@ -48,14 +36,8 @@ const fetchHistory = async (
     }
 };
 
-const fetchTonBalance = async (
-    initDataRaw: string | undefined,
-    userId: number | undefined
-): Promise<number> => {
-    const { data } = await axios.post("/api/wallet/get_balance", {
-        initData: initDataRaw,
-        player_id: userId,
-    });
+const fetchTonBalance = async (): Promise<number> => {
+    const { data } = await axios.post("/api/wallet/get_balance");
     if (data.ok) {
         return data.balance;
     } else {

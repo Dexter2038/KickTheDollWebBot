@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import getLaunchParams from "../../RetrieveLaunchParams";
 import axios from "axios";
 
 const BlackjackGame: React.FC = () => {
     const [searchParams] = useSearchParams();
     const roomId = searchParams.get("room_id");
-    const { initDataRaw, initData } = getLaunchParams();
-    const playerId = initData?.user?.id;
     const [steps, setSteps] = useState<number>(-1);
     const [player1Result, setPlayer1Result] = useState<number>(0);
     const [player2Result, setPlayer2Result] = useState<number>(0);
@@ -45,7 +42,7 @@ const BlackjackGame: React.FC = () => {
 
     const getBlackjackUpdates = async () => {
         const { data } = await axios.get(
-            `/api/blackjack/updates?player_id=${playerId}&room_id=${roomId}`
+            `/api/blackjack/updates?room_id=${roomId}`
         );
         if (data.ok) {
             if (data.msg !== "Обновления успешно получены.") {
@@ -71,19 +68,9 @@ const BlackjackGame: React.FC = () => {
 
     const takeCard = async () => {
         axios
-            .post(
-                "/api/blackjack/take",
-                {
-                    initData: initDataRaw,
-                    player_id: playerId,
-                    room_id: roomId,
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            )
+            .post("/api/blackjack/take", {
+                room_id: roomId,
+            })
             .then(({ data }) => {
                 if (data.ok) {
                     setSelfHand(data.hand);
@@ -106,8 +93,6 @@ const BlackjackGame: React.FC = () => {
     const passTurn = async () => {
         try {
             const { data } = await axios.post("/api/blackjack/pass", {
-                initData: initDataRaw,
-                player_id: playerId,
                 room_id: roomId,
             });
             if (!data.ok) {

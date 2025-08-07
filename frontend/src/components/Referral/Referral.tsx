@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import NavBar from "../NavBar";
 import { fetchReward, fetchLink, fetchReferral } from "./Utils";
 import { toast } from "react-toastify";
-import getLaunchParams from "../RetrieveLaunchParams";
 import axios from "axios";
 
 function formatLargeNumber(num: number) {
@@ -26,14 +25,13 @@ const Referral = (): JSX.Element => {
     const [reward, setReward] = useState<number>(0);
     const [referral, setReferral] = useState<number>(0);
     const [link, setLink] = useState<string>("");
-    const { initDataRaw, initData } = getLaunchParams();
     useEffect(() => {
         const fetchAll = async () => {
             try {
                 const [reward, referral, link] = await Promise.all([
-                    fetchReward(initDataRaw, initData?.user?.id),
-                    fetchReferral(initDataRaw, initData?.user?.id),
-                    fetchLink(initDataRaw, initData?.user?.id),
+                    fetchReward(),
+                    fetchReferral(),
+                    fetchLink(),
                 ]);
 
                 if (reward === -1) {
@@ -106,10 +104,7 @@ const Referral = (): JSX.Element => {
      */
     const takeReward = async (): Promise<void> => {
         const fetchTakeReward = async () => {
-            const { data } = await axios.post("/api/take-reward", {
-                initData: initDataRaw,
-                player_id: initData?.user?.id,
-            });
+            const { data } = await axios.post("/api/take-reward");
             if (data.ok) {
                 const intervalId = setInterval(() => {
                     setReward((reward) =>
