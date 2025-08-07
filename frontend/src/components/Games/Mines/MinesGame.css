@@ -1,131 +1,133 @@
 /* Styles for the game container */
 .board {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  gap: 10px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    gap: 10px;
 }
 
 /* Define rows and columns based on board size */
 .board.small {
-  grid-template-columns: repeat(9, 30px); /* For small difficulty */
-  grid-template-rows: repeat(9, 30px);
+    grid-template-columns: repeat(9, 30px); /* For small difficulty */
+    grid-template-rows: repeat(9, 30px);
 }
 
 .board.medium {
-  grid-template-columns: repeat(16, 30px); /* For medium difficulty */
-  grid-template-rows: repeat(16, 30px);
+    grid-template-columns: repeat(16, 30px); /* For medium difficulty */
+    grid-template-rows: repeat(16, 30px);
 }
 
 /* Style for each cell */
 .celll {
-  background-color: #333333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #aaa;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: background-color 0.2s, color 0.2s;
-  width: 40px;
-  height: 40px;
-  font-size: 12px;
+    background-color: #333333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #aaa;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition:
+        background-color 0.2s,
+        color 0.2s;
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
 }
 
 /* Revealed cell styles */
 .celll.revealed {
-  background-color: #eee;
-  cursor: default;
-  color: #333;
+    background-color: #eee;
+    cursor: default;
+    color: #333;
 }
 
 /* Flagged cell styles */
 .celll.flagged {
-  background-color: #f39c12;
-  color: #fff;
+    background-color: #f39c12;
+    color: #fff;
 }
 .celll.flagged::before {
-  content: "🚩";
+    content: "🚩";
 }
 
 /* Game Over and Win messages */
 .game-over,
 .game-won {
-  font-size: 24px;
-  text-align: center;
-  margin: 20px 0;
+    font-size: 24px;
+    text-align: center;
+    margin: 20px 0;
 }
 
 /* Difficulty selection styles */
 .difficulty-selection {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .difficulty-selection h2 {
-  transform: translate(+10%, 0);
+    transform: translate(+10%, 0);
 }
 
 .difficulty-selection button {
-  display: flex;
-  width: 90%;
-  justify-content: center;
-  border: 1px solid #b0b0b0;
-  margin: 0.3em 0;
-  border-radius: 0.8em;
-  background-color: white;
-  height: 2.5em;
-  align-items: center;
-  font-size: 20px;
-  transition: transform 0.3s ease;
+    display: flex;
+    width: 90%;
+    justify-content: center;
+    border: 1px solid #b0b0b0;
+    margin: 0.3em 0;
+    border-radius: 0.8em;
+    background-color: white;
+    height: 2.5em;
+    align-items: center;
+    font-size: 20px;
+    transition: transform 0.3s ease;
 }
 
 .easy {
-  background-image: linear-gradient(90deg, #6fd242, #66ff00);
-  color: white;
+    background-image: linear-gradient(90deg, #6fd242, #66ff00);
+    color: white;
 }
 
 .mines-cost {
-  display: flex;
-  width: 90%;
-  justify-content: center;
-  border: 1px solid #b0b0b0;
-  margin: 0.3em 0;
-  border-radius: 0.8em;
-  background-color: white;
-  height: 2.5em;
-  align-items: center;
-  font-size: 20px;
-  transition: transform 0.3s ease;
-  text-align: center;
+    display: flex;
+    width: 90%;
+    justify-content: center;
+    border: 1px solid #b0b0b0;
+    margin: 0.3em 0;
+    border-radius: 0.8em;
+    background-color: white;
+    height: 2.5em;
+    align-items: center;
+    font-size: 20px;
+    transition: transform 0.3s ease;
+    text-align: center;
 }
 
 .hard {
-  background-image: linear-gradient(90deg, #ff6961, #ff3333);
-  color: white;
+    background-image: linear-gradient(90deg, #ff6961, #ff3333);
+    color: white;
 }
 
 .easy:active::before {
-  content: "😎";
+    content: "😎";
 }
 .easy:active::after {
-  content: "😎";
+    content: "😎";
 }
 
 .hard:active::before {
-  content: "😈";
+    content: "😈";
 }
 .hard:active::after {
-  content: "😈";
+    content: "😈";
 }
 
 .difficulty-selection button:hover {
-  background-color: #0056b3;
-  color: white;
-  transform: scale(1.05);
+    background-color: #0056b3;
+    color: white;
+    transform: scale(1.05);
 }

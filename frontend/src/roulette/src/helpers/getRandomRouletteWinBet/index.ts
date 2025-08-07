@@ -1,1 +1,1 @@
-export * from './getRandomRouletteWinBet.ts';
+export * from "./getRandomRouletteWinBet.ts";

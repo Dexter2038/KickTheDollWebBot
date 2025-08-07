@@ -7,15 +7,15 @@ import RouletteGame from "./Roulette";
 import CrashGame from "./Crash";
 
 export {
-  GamesPage,
-  BlackjackPage,
-  BlackjackBot,
-  BlackjackGame,
-  DicePage,
-  DiceBot,
-  DiceGame,
-  GuessGame,
-  MinesGame,
-  RouletteGame,
-  CrashGame,
+    GamesPage,
+    BlackjackPage,
+    BlackjackBot,
+    BlackjackGame,
+    DicePage,
+    DiceBot,
+    DiceGame,
+    GuessGame,
+    MinesGame,
+    RouletteGame,
+    CrashGame,
 };

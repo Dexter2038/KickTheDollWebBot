@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 const Waiting: React.FC = (): JSX.Element => {
     const navigate = useNavigate();
-    navigate('/referal')
+    navigate("/referal");
     return (
         <div
             style={{

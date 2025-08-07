@@ -15,10 +15,7 @@ const NavBar = ({ stricted, fromGame = false }: NavBarProps) => {
         navigate(path);
     };
 
-
-
     if (stricted) {
-
         const showLeavePopup = () => {
             setTimeout(() => {
                 setShowClass(true);
@@ -39,12 +36,10 @@ const NavBar = ({ stricted, fromGame = false }: NavBarProps) => {
             };
         }
 
-
         const closeLeavePopup = () => {
             setShowClass(false);
             setTimeout(() => setNavigateAwayUrl(""), 500);
         };
-
 
         const strictedNavigate = (path: string) => {
             setNavigateAwayUrl(path);
@@ -95,15 +90,24 @@ const NavBar = ({ stricted, fromGame = false }: NavBarProps) => {
                     </button>
                 </div>
                 {navigateAwayUrl && (
-                    <div id="leave-popup" className={`popup ${showClass ? "show" : ""}`}>
+                    <div
+                        id="leave-popup"
+                        className={`popup ${showClass ? "show" : ""}`}
+                    >
                         <div className="popup-content inter">
                             <h2>Подтвердите выход</h2>
                             <p>Вы уверены, что хотите уйти?</p>
                             <div className="popup-buttons">
-                                <button className="btn-cancel inter" onClick={sureLeave}>
+                                <button
+                                    className="btn-cancel inter"
+                                    onClick={sureLeave}
+                                >
                                     Да
                                 </button>
-                                <button className="btn-create inter" onClick={closeLeavePopup}>
+                                <button
+                                    className="btn-create inter"
+                                    onClick={closeLeavePopup}
+                                >
                                     Нет
                                 </button>
                             </div>

@@ -1,1 +1,1 @@
-export * from './shouldRender';
+export * from "./shouldRender";

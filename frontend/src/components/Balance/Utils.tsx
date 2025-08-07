@@ -1,10 +1,13 @@
 import axios from "axios";
 /**
-* Fetches player data from the API and updates the dollar and money balances.
-*
-* @return {Promise<number>}
-*/
-const fetchData = async (initDataRaw: string | undefined, userId: number | undefined): Promise<number> => {
+ * Fetches player data from the API and updates the dollar and money balances.
+ *
+ * @return {Promise<number>}
+ */
+const fetchData = async (
+    initDataRaw: string | undefined,
+    userId: number | undefined
+): Promise<number> => {
     const { data } = await axios.post("/api/player/get", {
         initData: initDataRaw,
         player_id: userId,
@@ -26,11 +29,14 @@ interface Transaction {
 }
 
 /**
-* Fetches the transaction history from the API and updates the transactions state.
-*
-* @return {Promise<Transaction[]>}
-*/
-const fetchHistory = async (initDataRaw: string | undefined, userId: number | undefined): Promise<Transaction[]> => {
+ * Fetches the transaction history from the API and updates the transactions state.
+ *
+ * @return {Promise<Transaction[]>}
+ */
+const fetchHistory = async (
+    initDataRaw: string | undefined,
+    userId: number | undefined
+): Promise<Transaction[]> => {
     const { data } = await axios.post("/api/transactions/get", {
         initData: initDataRaw,
         player_id: userId,
@@ -42,18 +48,19 @@ const fetchHistory = async (initDataRaw: string | undefined, userId: number | un
     }
 };
 
-const fetchTonBalance = async (initDataRaw: string | undefined, userId: number | undefined): Promise<number> => {
+const fetchTonBalance = async (
+    initDataRaw: string | undefined,
+    userId: number | undefined
+): Promise<number> => {
     const { data } = await axios.post("/api/wallet/get_balance", {
         initData: initDataRaw,
         player_id: userId,
     });
     if (data.ok) {
-        return data.balance
+        return data.balance;
     } else {
-        return -1
+        return -1;
     }
-}
-
-
+};
 
 export { fetchData, fetchHistory, fetchTonBalance };

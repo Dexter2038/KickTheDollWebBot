@@ -1,1 +1,1 @@
-export * from './findChipIcon';
+export * from "./findChipIcon";

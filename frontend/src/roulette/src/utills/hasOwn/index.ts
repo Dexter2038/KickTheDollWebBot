@@ -1,1 +1,1 @@
-export * from './hasOwn';
+export * from "./hasOwn";

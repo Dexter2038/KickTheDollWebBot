@@ -1,25 +1,25 @@
 /* Контейнер для графика */
 .graph-container {
-  width: 90%;
-  height: 30vh;
-  background-color: #e0e0e0;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  margin-top: 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: relative;
+    width: 90%;
+    height: 30vh;
+    background-color: #e0e0e0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-top: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 
 /* Графики и линии */
 svg {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 }
 
 polyline {
-  fill: none;
-  stroke: blue;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+    fill: none;
+    stroke: blue;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }

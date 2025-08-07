@@ -10,20 +10,28 @@ interface NumberInputProps {
     style?: React.CSSProperties;
 }
 
-function NumberInput({ value, onChange, placeholder, className, maxLength, disabled, style }: NumberInputProps) {
-    const [inputValue, setInputValue] = useState(value || '');
+function NumberInput({
+    value,
+    onChange,
+    placeholder,
+    className,
+    maxLength,
+    disabled,
+    style,
+}: NumberInputProps) {
+    const [inputValue, setInputValue] = useState(value || "");
 
     // Add commas (thousands separators) as the user types
     useEffect(() => {
         const formattedValue = inputValue
-            .replace(/[^0-9]/g, '') // Remove non-digit characters
-            .replace(/\B(?=(\d{3})+(?!\d))/g, ','); // Add commas
+            .replace(/[^0-9]/g, "") // Remove non-digit characters
+            .replace(/\B(?=(\d{3})+(?!\d))/g, ","); // Add commas
         setInputValue(formattedValue);
     }, [inputValue]);
 
     // Handle input changes
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = event.target.value.replace(/[^0-9]/g, ''); // Allow only digits
+        const newValue = event.target.value.replace(/[^0-9]/g, ""); // Allow only digits
         setInputValue(newValue);
         onChange(newValue); // Pass the raw value to the parent component
     };
@@ -37,7 +45,6 @@ function NumberInput({ value, onChange, placeholder, className, maxLength, disab
             className={className}
             maxLength={maxLength}
             disabled={disabled}
-
         />
     );
 }

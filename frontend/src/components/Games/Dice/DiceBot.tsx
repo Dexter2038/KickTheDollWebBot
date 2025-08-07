@@ -21,7 +21,10 @@ const DiceBot: React.FC = () => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     };
 
-    const rollDice = (cubeRef: React.RefObject<HTMLDivElement>, result: number) => {
+    const rollDice = (
+        cubeRef: React.RefObject<HTMLDivElement>,
+        result: number
+    ) => {
         const rotations = Array.from({ length: 20 }, () => ({
             x: getRandomInt(-90, 90),
             y: getRandomInt(-180, 180),
@@ -49,13 +52,20 @@ const DiceBot: React.FC = () => {
 
     const getFinalRotation = (result: number) => {
         switch (result) {
-            case 1: return { x: 0, y: 0, z: 0 };
-            case 2: return { x: 0, y: 180, z: 0 };
-            case 3: return { x: 0, y: -90, z: 0 };
-            case 4: return { x: 0, y: 90, z: 0 };
-            case 5: return { x: -90, y: 0, z: 0 };
-            case 6: return { x: 90, y: 0, z: 0 };
-            default: return { x: 0, y: 0, z: 0 };
+            case 1:
+                return { x: 0, y: 0, z: 0 };
+            case 2:
+                return { x: 0, y: 180, z: 0 };
+            case 3:
+                return { x: 0, y: -90, z: 0 };
+            case 4:
+                return { x: 0, y: 90, z: 0 };
+            case 5:
+                return { x: -90, y: 0, z: 0 };
+            case 6:
+                return { x: 90, y: 0, z: 0 };
+            default:
+                return { x: 0, y: 0, z: 0 };
         }
     };
 

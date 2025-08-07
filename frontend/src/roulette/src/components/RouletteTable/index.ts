@@ -1,1 +1,1 @@
-export * from './RouletteTable';
+export * from "./RouletteTable";

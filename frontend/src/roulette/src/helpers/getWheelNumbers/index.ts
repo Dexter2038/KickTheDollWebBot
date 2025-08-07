@@ -1,1 +1,1 @@
-export * from './getWheelNumbers';
+export * from "./getWheelNumbers";

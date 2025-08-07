@@ -1,16 +1,20 @@
-import { Account, ConnectAdditionalRequest, TonProofItemReplySuccess } from "@tonconnect/ui";
+import {
+    Account,
+    ConnectAdditionalRequest,
+    TonProofItemReplySuccess,
+} from "@tonconnect/ui";
 import { useTonConnectUI } from "@tonconnect/ui-react";
 
-
 class BackendAuth {
-
     private readonly payloadTTLMS = 1000 * 60 * 20;
 
     private interval: ReturnType<typeof setInterval> | undefined;
 
     private localStorageAccessToken = "ton-connect-access-token-dapp";
 
-    public onAccessTokenChange: ((accessToken: string | null) => void) | undefined;
+    public onAccessTokenChange:
+        | ((accessToken: string | null) => void)
+        | undefined;
 
     private _accessToken: string | null = null;
     private set accessToken(token: string | null) {
@@ -30,7 +34,7 @@ class BackendAuth {
     tonConnectUI = useTonConnectUI()[0];
 
     constructor() {
-        this.tonConnectUI.connectionRestored.then(() => this.init())
+        this.tonConnectUI.connectionRestored.then(() => this.init());
     }
 
     private async init() {
@@ -42,7 +46,10 @@ class BackendAuth {
         if (!this.tonConnectUI.wallet) {
             this.accessToken = null;
             await this.refreshTonProofPayload();
-            setInterval(async () => await this.refreshTonProofPayload(), this.payloadTTLMS);
+            setInterval(
+                async () => await this.refreshTonProofPayload(),
+                this.payloadTTLMS
+            );
         }
 
         this.tonConnectUI.onStatusChange(async (wallet) => {
@@ -51,15 +58,22 @@ class BackendAuth {
             if (!wallet) {
                 this.accessToken = null;
                 await this.refreshTonProofPayload();
-                setInterval(async () => await this.refreshTonProofPayload(), this.payloadTTLMS);
+                setInterval(
+                    async () => await this.refreshTonProofPayload(),
+                    this.payloadTTLMS
+                );
             } else {
-                if (wallet.connectItems?.tonProof && !("error" in wallet.connectItems.tonProof)) {
-                    this.checkProof(wallet.connectItems.tonProof.proof, wallet.account).then((token) => {
-
-                    })
+                if (
+                    wallet.connectItems?.tonProof &&
+                    !("error" in wallet.connectItems.tonProof)
+                ) {
+                    this.checkProof(
+                        wallet.connectItems.tonProof.proof,
+                        wallet.account
+                    ).then((token) => {});
                 }
             }
-        })
+        });
     }
 
     private async refreshTonProofPayload() {
@@ -70,16 +84,18 @@ class BackendAuth {
         if (!value) {
             this.tonConnectUI.setConnectRequestParameters(null);
         } else {
-            this.tonConnectUI.setConnectRequestParameters({ state: 'ready', value });
+            this.tonConnectUI.setConnectRequestParameters({
+                state: "ready",
+                value,
+            });
         }
-
     }
 
     async generatePayload(): Promise<ConnectAdditionalRequest | undefined> {
         try {
             const response = await (
                 await fetch(`/ton-proof/generatePayload`, {
-                    method: 'POST'
+                    method: "POST",
                 })
             ).json();
             return { tonProof: response.payload };
@@ -89,23 +105,26 @@ class BackendAuth {
         }
     }
 
-    async checkProof(proof: TonProofItemReplySuccess['proof'], account: Account): Promise<string | undefined> {
+    async checkProof(
+        proof: TonProofItemReplySuccess["proof"],
+        account: Account
+    ): Promise<string | undefined> {
         try {
             const requestBody = {
                 address: account.address,
                 network: account.chain,
                 proof: {
                     ...proof,
-                    state_init: account.walletStateInit
-                }
-            }
+                    state_init: account.walletStateInit,
+                },
+            };
 
             const response = await (
                 await fetch(`/ton-proof/checkProof`, {
-                    method: 'POST',
-                    body: JSON.stringify(requestBody)
+                    method: "POST",
+                    body: JSON.stringify(requestBody),
                 })
-            ).json()
+            ).json();
 
             return response?.token;
         } catch (e) {
@@ -118,8 +137,8 @@ class BackendAuth {
             await fetch(`/dapp/getAccountInfo?network=${account.chain}`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                }
+                    "Content-Type": "application/json",
+                },
             })
         ).json();
     }
