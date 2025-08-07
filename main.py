@@ -20,9 +20,6 @@ def task_clear_game_sessions():
     )
 
 
-bot, dp = telegram_bot.get_bot()
-
-
 async def start_uvicorn() -> None:
     config = uvicorn.Config(app=app, host="0.0.0.0", port=8000)
     server = uvicorn.Server(config=config)
@@ -30,6 +27,7 @@ async def start_uvicorn() -> None:
 
 
 async def start_bot() -> None:
+    bot, dp = await telegram_bot.get_bot()
     await dp.start_polling(bot)
 
 
