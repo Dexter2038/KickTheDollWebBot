@@ -27,7 +27,11 @@ const BlackjackGame: React.FC = () => {
     useEffect(() => {
         const getReward = async () => {
             axios
-                .get(`/api/blackjack/reward?room_id=${roomId}`)
+                .get("/api/blackjack/reward", {
+                    params: {
+                        room_id: roomId,
+                    },
+                })
                 .then((response) => {
                     setReward(response.data.reward);
                 })
@@ -41,9 +45,11 @@ const BlackjackGame: React.FC = () => {
     });
 
     const getBlackjackUpdates = async () => {
-        const { data } = await axios.get(
-            `/api/blackjack/updates?room_id=${roomId}`
-        );
+        const { data } = await axios.get("/api/blackjack/updates", {
+            params: {
+                room_id: roomId,
+            },
+        });
         if (data.ok) {
             if (data.msg !== "Обновления успешно получены.") {
                 toast(data.msg);

@@ -36,9 +36,11 @@ const DiceGame: React.FC = () => {
     useEffect(() => {
         const getReward = async () => {
             try {
-                const { data } = await axios.get(
-                    `/api/dice/reward?room_id=${roomId}`
-                );
+                const { data } = await axios.get("/api/dice/reward", {
+                    params: {
+                        room_id: roomId,
+                    },
+                });
                 setReward(data.reward);
             } catch {
                 toast.error("Произошла ошибка.");
@@ -191,7 +193,12 @@ const DiceGame: React.FC = () => {
 
     const getDiceUpdates = useCallback(async () => {
         const { data }: { data: DiceUpdatesResponse } = await axios.get(
-            `/api/dice/updates?room_id=${roomId}`
+            "/api/dice/updates",
+            {
+                params: {
+                    room_id: roomId,
+                },
+            }
         );
         if (data.ok) {
             if (data.msg !== "Обновления успешно получены.") {
