@@ -18,7 +18,7 @@ dependencies = [
     ##"pydantic (>=2.11.7,<3.0.0)",
     "python-dotenv (>=1.1.0,<2.0.0)",
     "schedule (>=1.2.2,<2.0.0)",
-    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "sqlalchemy[asyncio] (>=2.0.42,<3.0.0)",
     "tontools (==2.0.11)",
     "uvicorn (>=0.34.3,<0.35.0)",
     "aiogram3-di (>=2.0.0,<3.0.0)",

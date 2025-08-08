@@ -1,10 +1,7 @@
 from typing import Awaitable, Callable, Optional, cast
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
-from starlette import status
-
-# from app.api.jwt import UserAuthManager
+from starlette.responses import RedirectResponse, Response
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -17,6 +14,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not auth:
             return leave
 
+        raise NotImplementedError
         payload = UserAuthManager().decode_token(auth[7:])
 
         sub = cast(Optional[str], payload.get("sub") if payload else None)

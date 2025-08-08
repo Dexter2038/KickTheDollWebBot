@@ -3,11 +3,13 @@ import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { retrieveLaunchParams } from "@telegram-apps/sdk";
 
 const RegisterPage: React.FC = (): JSX.Element => {
     const [registered, setRegistered] = useState<boolean>(false);
     const tonAddress = useTonAddress(false);
     const [tonConnectUI] = useTonConnectUI();
+    const { initDataRaw } = retrieveLaunchParams();
     const navigate = useNavigate();
 
     tonConnectUI.onStatusChange((wallet) => {
@@ -19,8 +21,9 @@ const RegisterPage: React.FC = (): JSX.Element => {
     useEffect(() => {
         const fetchRegister = () => {
             axios
-                .post("/api/player/post", {
+                .post("/api/player/login", {
                     wallet_address: tonAddress,
+                    init_data: initDataRaw,
                 })
                 .then(({ data }) => {
                     if (data.ok) {

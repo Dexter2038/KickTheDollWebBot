@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from app.api.jwt import create_refresh_token, create_access_token
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,24 @@ from app.db.session import get_session
 from app.domain.user import CreateUserRequest
 
 router = APIRouter(prefix="/player", tags=["player"])
+
+
+@router.post("/login", response_class=JSONResponse)
+async def login_player(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    init_data: str,
+    wallet_address: str,
+) -> JSONResponse:
+    telegram_id = await Actions(session).login_user(init_data, wallet_address)
+    if telegram_id is None:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    response = JSONResponse({})
+    response.set_cookie(
+        "refresh_token", await create_refresh_token(session, telegram_id)
+    )
+    response.set_cookie("access_token", await create_access_token(telegram_id))
+    return response
 
 
 @router.post("/get", response_class=JSONResponse)

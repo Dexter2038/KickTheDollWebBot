@@ -5,6 +5,7 @@ from uuid import uuid4
 import aiohttp
 from bs4 import BeautifulSoup
 from fastapi import HTTPException
+from app.services.telegram import get_telegram_vars
 from loguru import logger
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,6 +96,36 @@ class Actions:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def login_user(self, init_data: str, wallet_address: str) -> Optional[int]:
+        """
+        Login user
+
+        Args:
+            init_data (str): Init data
+
+        Returns:
+            bool: True if user was logged in successfully, False otherwise
+        """
+        if not (vars := get_telegram_vars(init_data)):
+            return None
+
+        user = vars.get("telegram_id")
+        if not user:
+            return None
+
+        telegram_id = user.get("id")
+        if not telegram_id:
+            return None
+
+        username = user.get("username")
+        if not username:
+            return None
+
+        if not await self.create_user(telegram_id, username, wallet_address):
+            return None
+
+        return telegram_id
 
     async def get_top_winners(self) -> List[Tuple[str, float, int]]:
         return await self.get_top_lottery_transactions()
@@ -336,24 +367,31 @@ class Actions:
             wallet_address (str): The wallet address of the user.
 
         Returns:
-            bool: True if the user is created successfully, False otherwise.
+            int: The ID of the newly created user or already existing one.
         """
         logger.info(
             f"Создан новый пользователь: Telegram ID: {telegram_id}, Никнейм: {username}, Адресс кошелька: {wallet_address}"
         )
 
+        res = await self.session.execute(
+            select(Users.telegram_id).where(Users.telegram_id == telegram_id)
+        )
+        user_id = res.scalar_one_or_none()
+
+        if user_id is not None:
+            return True
+
+        model = Users(
+            telegram_id = telegram_id,
+            username = username,
+            wallet_address = wallet_address
+        )
+        self.session.add(model)
         try:
-            model = Users(
-                telegram_id=telegram_id,
-                username=username,
-                wallet_address=wallet_address,
-            )
-            self.session.add(model)
             await self.session.commit()
-            return True  # User created successfully
-        except Exception as e:
-            logger.error(f"Error creating user: {e.__class__.__name__}: {e}")
-            return False  # Error creating user
+        except:
+            return False
+        return True
 
     async def get_user(self, telegram_id: int) -> Users:
         """
@@ -875,6 +913,9 @@ class Actions:
         await self.session.delete(referral)
         await self.session.commit()
         return True
+
+class JWTActions(Actions):
+    async def 
 
 
 async def fetch(session: aiohttp.ClientSession, url: str) -> str:
