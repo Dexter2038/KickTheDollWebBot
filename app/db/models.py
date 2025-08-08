@@ -1,18 +1,9 @@
-import asyncio
 from datetime import UTC, datetime, timedelta
-from os import environ
 from uuid import uuid4
 
-from loguru import logger
 from sqlalchemy import ForeignKey, String, func
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import BIGINT
-
-from app.config import settings
-
-engine = create_async_engine(settings.db_url, isolation_level="AUTOCOMMIT")
-new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 class Model(DeclarativeBase):
@@ -112,26 +103,3 @@ class LotteryTransactions(Model):
     multiplier: Mapped[float] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=func.current_timestamp())
     confirmed_at: Mapped[datetime] = mapped_column(nullable=True)
-
-
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Model.metadata.create_all)
-
-
-try:
-    loop = asyncio.get_running_loop()
-except RuntimeError:  # 'RuntimeError: There is no current event loop...'
-    loop = None
-if loop and loop.is_running():
-    print("Async event loop already running. Adding coroutine to the event loop.")
-    tsk = loop.create_task(create_tables())
-    # ^-- https://docs.python.org/3/library/asyncio-task.html#task-object
-    # Optionally, a callback function can be executed when the coroutine completes
-    tsk.add_done_callback(
-        lambda t: print(f"Task done with result={t.result()}  << None")
-    )
-else:
-    print("Starting new event loop")
-    result = asyncio.run(create_tables())
-logger.info("Модели из БД готовы к использованию")

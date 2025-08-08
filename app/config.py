@@ -40,5 +40,9 @@ class Settings(BaseSettings):
     def db_url(self) -> str:
         return f"postgresql+asyncpg://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
 
+    @property
+    def sync_db_url(self) -> str:
+        return f"postgresql+psycopg2://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
+
 
 settings = Settings()

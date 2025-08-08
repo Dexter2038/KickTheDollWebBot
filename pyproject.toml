@@ -2,10 +2,8 @@
 name = "kickthedollwebbot"
 version = "1.0.0"
 description = "A hamster-combat-like webapp."
-authors = [
-    {name = "Velmer",email = "barkaloff.m@gmail.com"}
-]
-license = {text = "MIT"}
+authors = [{ name = "Velmer", email = "barkaloff.m@gmail.com" }]
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
@@ -25,13 +23,13 @@ dependencies = [
     "asyncpg (>=0.30.0,<0.31.0)",
     "jinja2 (>=3.1.6,<4.0.0)",
     "pydantic-settings (>=2.9.1,<3.0.0)",
+    "alembic (>=1.16.4,<2.0.0)",
+    "psycopg2-binary (>=2.9.10,<3.0.0)",
 ]
 
 [tool.poetry]
 
-packages = [
-  { include = "app" },
-]
+packages = [{ include = "app" }]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.0"
