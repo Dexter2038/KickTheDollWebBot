@@ -1,14 +1,14 @@
 # Telegram Web App
 
-##### The project utilizing features of gambling games but also offers the main game.
+##### The project utilizing features of gambling games but also offers the main game
 
+## Consists of
 
-## Consists of:
 - **The main game**
 
 - **Lottery**
 
-- **Gambling games**
+- **Games**
 
 ## Features
 
@@ -60,7 +60,7 @@
 
 ## Admin panel
 
-#### Admins can manage:
+#### Admins can manage
 
 - **Users**
 
@@ -73,3 +73,4 @@
 - **Referrals**
 
 - **Technical works**
+
