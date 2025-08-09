@@ -29,6 +29,17 @@ class Users(Model):
     joined_at: Mapped[datetime] = mapped_column(default=func.current_timestamp())
 
 
+class RefreshToken(Model):
+    __tablename__ = "jwt"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BIGINT, ForeignKey("users.telegram_id"), unique=False
+    )
+    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+
+
 class Wallets(Model):
     __tablename__ = "wallets"
 

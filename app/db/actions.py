@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from fastapi import HTTPException
 from app.services.telegram import get_telegram_vars
 from loguru import logger
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import delete, exists, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -17,6 +17,7 @@ from .models import (
     FinishedGame,
     LotteryTransactions,
     Referrals,
+    RefreshToken,
     Transactions,
     Users,
 )
@@ -382,9 +383,7 @@ class Actions:
             return True
 
         model = Users(
-            telegram_id = telegram_id,
-            username = username,
-            wallet_address = wallet_address
+            telegram_id=telegram_id, username=username, wallet_address=wallet_address
         )
         self.session.add(model)
         try:
@@ -914,8 +913,74 @@ class Actions:
         await self.session.commit()
         return True
 
-class JWTActions(Actions):
-    async def 
+
+class RefreshTokenActions(Actions):
+    async def create_refresh_token(
+        self, telegram_id: int, valid_till: datetime
+    ) -> Optional[int]:
+        res = await self.session.execute(
+            insert(RefreshToken)
+            .values(
+                user_id=telegram_id, created_at=datetime.now(UTC), expires_at=valid_till
+            )
+            .returning(RefreshToken.id)
+        )
+        id = res.scalar_one_or_none()
+        if not id:
+            return
+        try:
+            await self.session.commit()
+        except:
+            await self.session.rollback()
+            return
+        return id
+
+    async def verify_refresh_token(self, payload: dict) -> Optional[int]:
+        sub = payload.get("sub")
+        if not sub:
+            return
+
+        if not sub.isdigit():
+            return
+
+        sub = int(sub)
+
+        jti = payload.get("jti")
+        if not jti:
+            return
+
+        iat = payload.get("iat")
+        if not iat:
+            return
+
+        iat = datetime.fromtimestamp(iat, tz=UTC)
+
+        exp = payload.get("exp")
+        if not exp:
+            return
+        exp = datetime.fromtimestamp(exp, tz=UTC)
+
+        if exp < datetime.now(UTC):
+            return
+
+        result = await self.session.execute(
+            select(
+                exists(
+                    select(RefreshToken.id).where(
+                        RefreshToken.id == jti,
+                        RefreshToken.created_at == iat,
+                        RefreshToken.user_id == sub,
+                        RefreshToken.expires_at == exp,
+                    )
+                )
+            )
+        )
+        is_token = result.scalar_one_or_none()
+
+        if not is_token:
+            return
+
+        return sub
 
 
 async def fetch(session: aiohttp.ClientSession, url: str) -> str:

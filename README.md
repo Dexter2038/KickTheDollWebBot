@@ -1,6 +1,6 @@
-# Telegram Web App
+# Kick The Doll telegram webapp
 
-##### The project utilizing features of gambling games but also offers the main game
+##### The project utilizing features of mini games but also offers the main game
 
 ## Consists of
 
@@ -73,4 +73,3 @@
 - **Referrals**
 
 - **Technical works**
-

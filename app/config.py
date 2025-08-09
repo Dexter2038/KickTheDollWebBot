@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str
 
+    jwt_secret: str = ""
+
     # TON
     ton_api_key: str = ""
 

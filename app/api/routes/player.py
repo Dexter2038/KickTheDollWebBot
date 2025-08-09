@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -20,14 +21,21 @@ async def login_player(
     wallet_address: str,
 ) -> JSONResponse:
     telegram_id = await Actions(session).login_user(init_data, wallet_address)
-    if telegram_id is None:
+    if not telegram_id:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    refresh_token = await create_refresh_token(session, telegram_id, timedelta(days=7))
+    access_token = await create_access_token(telegram_id, timedelta(days=1))
+    if not refresh_token or not access_token:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     response = JSONResponse({})
     response.set_cookie(
-        "refresh_token", await create_refresh_token(session, telegram_id)
+        "refresh_token", refresh_token, httponly=True, secure=True, samesite="strict"
     )
-    response.set_cookie("access_token", await create_access_token(telegram_id))
+    response.set_cookie(
+        "access_token", access_token, httponly=True, secure=True, samesite="strict"
+    )
     return response
 
 
