@@ -9,6 +9,7 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8001",
         rewriteWsOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
     cors: {
@@ -18,8 +19,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "../app/assets/",
-    assetsDir: "./",
+    outDir: "build",
+    assetsDir: "assets",
     emptyOutDir: true,
   },
 });

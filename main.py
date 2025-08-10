@@ -3,9 +3,9 @@ import asyncio
 import schedule
 import uvicorn
 
-from app import telegram_bot
-from app.api import app
-from app.db.actions import clear_game_sessions, mark_guess_games
+import tgbot
+from backend.api import app
+from backend.db.actions import clear_game_sessions, mark_guess_games
 
 
 def task_mark_guess_games():
@@ -27,7 +27,7 @@ async def start_uvicorn() -> None:
 
 
 async def start_bot() -> None:
-    bot, dp = await telegram_bot.get_bot()
+    bot, dp = await tgbot.get_bot()
     await dp.start_polling(bot)
 
 
